@@ -33,6 +33,7 @@ import {
   Bot,
   ShieldAlert,
   Code,
+  Building2,
 } from "lucide-react";
 import { GithubIcon, Badge } from "@/components/ui";
 
@@ -58,6 +59,7 @@ export function Navbar() {
   ];
 
   const ecosystemItems = [
+    { href: "/institutions", label: "Institusi", icon: Building2 },
     { href: "/partnerships", label: "Mitra Global", icon: Globe },
     { href: "/knowledge-explorer", label: "Knowledge Explorer", icon: Compass },
     { href: "/developers", label: "Developer API", icon: Code },
@@ -123,6 +125,13 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           {/* Quick Ecosystem Menu Pill */}
           <div className="hidden lg:flex items-center gap-1 text-xs font-mono border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 rounded-md">
+            <Link
+              href="/institutions"
+              className="text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1.5 py-0.5 rounded transition-colors"
+            >
+              Institusi
+            </Link>
+            <span className="text-[var(--color-border)]">|</span>
             <Link
               href="/opensource"
               className="text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1.5 py-0.5 rounded transition-colors"

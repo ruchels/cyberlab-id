@@ -16,6 +16,7 @@ import {
   User,
   Shield,
   BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import { Badge, Card, CardHeader, CardContent } from "@/components/ui";
 
@@ -214,11 +215,10 @@ export default function ContributorsPage() {
         {/* Message Banner */}
         {message && (
           <div
-            className={`p-4 rounded-lg font-mono text-xs flex items-center justify-between border ${
-              message.type === "success"
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                : "bg-rose-500/10 border-rose-500/30 text-rose-400"
-            }`}
+            className={`p-4 rounded-lg font-mono text-xs flex items-center justify-between border ${message.type === "success"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+              : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+              }`}
           >
             <span>{message.text}</span>
             <button onClick={() => setMessage(null)} className="underline hover:opacity-80">
@@ -310,10 +310,10 @@ export default function ContributorsPage() {
                           task.status === "open"
                             ? "accent"
                             : task.status === "in_review"
-                            ? "secondary"
-                            : task.status === "completed"
-                            ? "outline"
-                            : "secondary"
+                              ? "secondary"
+                              : task.status === "completed"
+                                ? "outline"
+                                : "secondary"
                         }
                         size="sm"
                       >

@@ -32,6 +32,7 @@ import {
   HelpCircle,
   Globe,
   Key,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 

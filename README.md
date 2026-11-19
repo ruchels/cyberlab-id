@@ -186,6 +186,35 @@
 
 </td>
 </tr>
+<tr>
+<td colspan="2">
+
+### 🌍 Global Ecosystem & Developer API v1 (v2.8.0) — *Phase 8*
+- **Global Localization & Timezones**: Bilingual EN/ID persistence in user preferences, dynamic timezone calculation, and region-neutral profiles.
+- **Institutional Partnerships (`/partnerships`)**: Verified directory of academic, vocational, and research institutions with online application and admin review workflow.
+- **External Threat Knowledge Integrations (`/knowledge-explorer`)**: Interactive navigators for MITRE ATT&CK Matrix, NIST CSF v2.0, OWASP Top 10, and live NIST NVD CVE lookup with defensive mitigations.
+- **Open-Source Contribution Hub (`/contributors`)**: Community task board with issue/PR workflow, maintainer task authoring, and XP awards.
+- **Public Developer API v1 (`/developers`, `/api/v1/*`)**: Developer API key generation with SHA-256 cryptographic hashing, scope enforcement (`read:modules`, `read:events`, `read:research`, `read:ctf`), sliding-window rate limiting, and strict data minimization.
+- **GDPR Compliance**: JSON user data portability (`/api/user/export-data`) and permanent account deletion workflow (`/api/user/delete-account`).
+- Complete documentation: [`GLOBAL_ECOSYSTEM_ARCHITECTURE.md`](GLOBAL_ECOSYSTEM_ARCHITECTURE.md), [`docs/PUBLIC_API_V1.md`](docs/PUBLIC_API_V1.md).
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+### 🏢 Enterprise & Institutional Edition (v2.9.0) — *Phase 9*
+- **Secure Multi-Tenant Architecture (`/institutions`)**: Isolated organizational workspaces for universities, vocational schools (SMK), high schools, academies, and corporate security departments.
+- **Server-Side Tenant Isolation & Role Hierarchy**: Multi-level RBAC (`owner`, `admin`, `academic_director`, `department_admin`, `instructor`, `ta`, `student`, `trainee`, `auditor`) with strict anti-IDOR resource ownership guards.
+- **Academic Structure Management**: Departments, cohorts, classes, and academic terms with bulk CSV student/instructor onboarding (`/api/institutions/[id]/import`).
+- **Institutional LMS & Practical Cyber Range**: Dedicated institutional course catalog, class assignments with instructor grading queue, and containerized Cyber Range lab assignments with concurrency quota management.
+- **Private Assessments & CTF**: Timed institutional exams with server-side scoring and cryptographic answer hashing.
+- **Cryptographic Institutional Certification**: Tamper-proof internal certificates with SHA-256 verification hashes and public lookup (`/verify/[certId]`).
+- **AI Governance & Compliance**: Tenant-isolated AI tutor controls with human-in-the-loop requirement (AI is prohibited from finalizing grades or disciplinary actions) and automated CSV reporting.
+- Complete documentation: [`ENTERPRISE_INSTITUTIONAL_ARCHITECTURE.md`](ENTERPRISE_INSTITUTIONAL_ARCHITECTURE.md).
+
+</td>
+</tr>
 </table>
 
 ---

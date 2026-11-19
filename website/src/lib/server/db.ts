@@ -629,6 +629,222 @@ function initSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_developer_api_keys_user ON developer_api_keys(user_id);
     CREATE INDEX IF NOT EXISTS idx_ext_knowledge_src ON external_knowledge_cache(source_type, reference_id);
     CREATE INDEX IF NOT EXISTS idx_cert_verifications_cert ON certificate_verifications(certificate_id, verified_at DESC);
+
+    -- Phase 9: Enterprise & Institutional Edition (Multi-Tenant Architecture)
+    CREATE TABLE IF NOT EXISTS institutions (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      org_type TEXT NOT NULL DEFAULT 'university', -- 'university' | 'vocational_school' | 'high_school' | 'training_center' | 'corporate' | 'community'
+      description TEXT NOT NULL DEFAULT '',
+      logo_url TEXT NOT NULL DEFAULT '',
+      brand_color TEXT NOT NULL DEFAULT '#00ff9d',
+      welcome_message TEXT NOT NULL DEFAULT '',
+      website_url TEXT NOT NULL DEFAULT '',
+      contact_email TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active', -- 'pending_verification' | 'active' | 'suspended' | 'archived'
+      plan_tier TEXT NOT NULL DEFAULT 'education', -- 'community' | 'education' | 'professional' | 'enterprise'
+      plan_max_users INTEGER NOT NULL DEFAULT 500,
+      plan_max_storage_mb INTEGER NOT NULL DEFAULT 20480,
+      plan_max_lab_concurrency INTEGER NOT NULL DEFAULT 25,
+      plan_ai_monthly_tokens INTEGER NOT NULL DEFAULT 2000000,
+      is_verified INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_departments (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      code TEXT NOT NULL,
+      head_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_members (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL DEFAULT 'student', -- 'owner' | 'admin' | 'academic_director' | 'department_admin' | 'instructor' | 'ta' | 'student' | 'trainee' | 'auditor'
+      department_id TEXT REFERENCES institution_departments(id) ON DELETE SET NULL,
+      student_id_number TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'invited' | 'suspended'
+      joined_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE(institution_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_invitations (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      email TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'student',
+      department_id TEXT REFERENCES institution_departments(id) ON DELETE SET NULL,
+      invited_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      expires_at TEXT NOT NULL,
+      accepted_at TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_classes (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      department_id TEXT REFERENCES institution_departments(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      academic_term TEXT NOT NULL,
+      instructor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'archived'
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_class_students (
+      class_id TEXT NOT NULL REFERENCES institution_classes(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      enrolled_at TEXT NOT NULL,
+      PRIMARY KEY (class_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_courses (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      code TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      syllabus TEXT NOT NULL DEFAULT '[]', -- JSON array of topics
+      module_ids TEXT NOT NULL DEFAULT '[]', -- JSON array of module IDs
+      instructor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      visibility TEXT NOT NULL DEFAULT 'class_only', -- 'class_only' | 'institution_wide' | 'public'
+      status TEXT NOT NULL DEFAULT 'published', -- 'draft' | 'published' | 'archived'
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_course_assignments (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      course_id TEXT NOT NULL REFERENCES institution_courses(id) ON DELETE CASCADE,
+      class_id TEXT REFERENCES institution_classes(id) ON DELETE SET NULL,
+      title TEXT NOT NULL,
+      instructions TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      max_score INTEGER NOT NULL DEFAULT 100,
+      created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_submissions (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      assignment_id TEXT NOT NULL REFERENCES institution_course_assignments(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      file_url TEXT NOT NULL DEFAULT '',
+      score INTEGER DEFAULT NULL,
+      feedback TEXT NOT NULL DEFAULT '',
+      graded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      graded_at TEXT,
+      submitted_at TEXT NOT NULL,
+      UNIQUE(assignment_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_lab_assignments (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      class_id TEXT NOT NULL REFERENCES institution_classes(id) ON DELETE CASCADE,
+      template_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      required_flag TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_assessments (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      class_id TEXT REFERENCES institution_classes(id) ON DELETE SET NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      time_limit_minutes INTEGER NOT NULL DEFAULT 60,
+      questions TEXT NOT NULL DEFAULT '[]', -- JSON array of {id, prompt, options, answer_hash, points}
+      starts_at TEXT NOT NULL,
+      ends_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_assessment_attempts (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      assessment_id TEXT NOT NULL REFERENCES institution_assessments(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      score INTEGER NOT NULL DEFAULT 0,
+      answers TEXT NOT NULL DEFAULT '{}', -- JSON object
+      submitted_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_certificates (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      course_id TEXT REFERENCES institution_courses(id) ON DELETE SET NULL,
+      certificate_code TEXT NOT NULL UNIQUE,
+      verification_hash TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      issue_date TEXT NOT NULL,
+      issuing_authority TEXT NOT NULL,
+      criteria TEXT NOT NULL,
+      is_revoked INTEGER NOT NULL DEFAULT 0,
+      revocation_reason TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_ai_settings (
+      institution_id TEXT PRIMARY KEY REFERENCES institutions(id) ON DELETE CASCADE,
+      ai_enabled INTEGER NOT NULL DEFAULT 1,
+      custom_system_prompt TEXT DEFAULT '',
+      allowed_domains TEXT NOT NULL DEFAULT '["linux","networking","web","crypto","forensics","reverse"]',
+      require_human_grade_approval INTEGER NOT NULL DEFAULT 1,
+      monthly_token_usage INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_audit_logs (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      action TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      details TEXT NOT NULL DEFAULT '{}',
+      ip_address TEXT NOT NULL DEFAULT '127.0.0.1',
+      timestamp TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS institution_sso_configs (
+      institution_id TEXT PRIMARY KEY REFERENCES institutions(id) ON DELETE CASCADE,
+      idp_type TEXT NOT NULL DEFAULT 'saml2', -- 'saml2' | 'oidc'
+      entity_id TEXT NOT NULL DEFAULT '',
+      sso_url TEXT NOT NULL DEFAULT '',
+      certificate_or_secret TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Phase 9 Indexes
+    CREATE INDEX IF NOT EXISTS idx_inst_slug ON institutions(slug);
+    CREATE INDEX IF NOT EXISTS idx_inst_status ON institutions(status, plan_tier);
+    CREATE INDEX IF NOT EXISTS idx_inst_members_user ON institution_members(user_id, role);
+    CREATE INDEX IF NOT EXISTS idx_inst_members_inst ON institution_members(institution_id, role);
+    CREATE INDEX IF NOT EXISTS idx_inst_dept_inst ON institution_departments(institution_id);
+    CREATE INDEX IF NOT EXISTS idx_inst_classes_inst ON institution_classes(institution_id, status);
+    CREATE INDEX IF NOT EXISTS idx_inst_courses_inst ON institution_courses(institution_id, status);
+    CREATE INDEX IF NOT EXISTS idx_inst_assignments_inst ON institution_course_assignments(institution_id, course_id);
+    CREATE INDEX IF NOT EXISTS idx_inst_submissions_asg ON institution_submissions(assignment_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_inst_labs_inst ON institution_lab_assignments(institution_id, class_id);
+    CREATE INDEX IF NOT EXISTS idx_inst_assessments_inst ON institution_assessments(institution_id);
+    CREATE INDEX IF NOT EXISTS idx_inst_certs_inst ON institution_certificates(institution_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_inst_certs_hash ON institution_certificates(verification_hash);
+    CREATE INDEX IF NOT EXISTS idx_inst_audit_inst ON institution_audit_logs(institution_id, timestamp DESC);
   `);
 
   // Safe migrations for Phase 8 user attributes
@@ -2063,6 +2279,307 @@ function seedInitialData(db: DatabaseSync) {
     for (const g of groups) {
       insertGroup.run(g.id, g.name, g.slug, g.cat, g.reg, g.desc, g.count, now);
     }
+  }
+
+  // 17. Seed Phase 9: Enterprise & Institutional Edition
+  const checkInst = db.prepare("SELECT count(*) as count FROM institutions").get() as { count: number };
+  if (checkInst.count === 0) {
+    const now = new Date().toISOString();
+
+    // Seed Phase 9 Achievements
+    const insertAch = db.prepare(`
+      INSERT OR IGNORE INTO achievements (id, code, title, description, xp_reward, icon, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAch.run("ach_enterprise-admin", "enterprise-admin", "Administrator Institusi", "Menjadi pengelola tenant institusi, universitas, atau politeknik mitra CyberLab-ID.", 50, "Building2", "institution");
+    insertAch.run("ach_cohort-valedictorian", "cohort-valedictorian", "Lulusan Terbaik Kohort", "Menyelesaikan seluruh kurikulum kelas institusi dengan nilai praktikum memuaskan.", 60, "GraduationCap", "institution");
+    insertAch.run("ach_range-instructor", "range-instructor", "Instruktur Cyber Range", "Merancang dan menugaskan skenario praktikum siber isolasi untuk kelas pelatihan.", 45, "ShieldCheck", "institution");
+    insertAch.run("ach_certified-graduate", "certified-graduate", "Alumni Tersertifikasi", "Meraih sertifikat kompetensi berverifikasi kriptografis resmi dari institusi pendidikan.", 50, "Award", "institution");
+
+    // Seed Institutions
+    const insertInstitution = db.prepare(`
+      INSERT INTO institutions (
+        id, slug, name, org_type, description, logo_url, brand_color,
+        welcome_message, website_url, contact_email, status, plan_tier,
+        plan_max_users, plan_max_storage_mb, plan_max_lab_concurrency,
+        plan_ai_monthly_tokens, is_verified, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertInstitution.run(
+      "inst_ui_csc",
+      "ui-csc",
+      "Universitas Indonesia - Center for Cyber Security and Defense",
+      "university",
+      "Pusat keunggulan riset pertahanan siber dan pendidikan spesialis keamanan informasi terapan Universitas Indonesia.",
+      "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=128&q=80",
+      "#f59e0b",
+      "Selamat datang di portal akademik cybersecurity terpadu Fasilkom & Puskaji Siber UI.",
+      "https://csc.cs.ui.ac.id",
+      "cybersecurity@cs.ui.ac.id",
+      "active",
+      "enterprise",
+      2000,
+      102400,
+      100,
+      10000000,
+      1,
+      now,
+      now
+    );
+
+    insertInstitution.run(
+      "inst_smk_idnet",
+      "smk-idnet",
+      "SMK ID-Networkers Cyber Academy",
+      "vocational_school",
+      "Program kejuruan vokasi Teknik Komputer Jaringan & Cybersecurity Hands-On berbasis kurikulum industri.",
+      "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=128&q=80",
+      "#00ff9d",
+      "Selamat datang siswa-siswi SMK ID-Networkers di CyberLab Range & Assessment Center.",
+      "https://academy.id-networkers.com",
+      "academy@id-networkers.com",
+      "active",
+      "education",
+      500,
+      20480,
+      25,
+      2000000,
+      1,
+      now,
+      now
+    );
+
+    // Seed Departments
+    const insertDept = db.prepare(`
+      INSERT INTO institution_departments (id, institution_id, name, code, head_user_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    insertDept.run("idept_ui_fasilkom", "inst_ui_csc", "Fakultas Ilmu Komputer", "FASILKOM", "usr_admin", now);
+    insertDept.run("idept_ui_secres", "inst_ui_csc", "Pusat Riset Keamanan Siber Terapan", "CS-SEC", "usr_budi", now);
+    insertDept.run("idept_idnet_tkj", "inst_smk_idnet", "Teknik Komputer & Jaringan", "TKJ", "usr_admin", now);
+    insertDept.run("idept_idnet_soc", "inst_smk_idnet", "SOC Analyst Fast Track", "SOC", "usr_budi", now);
+
+    // Seed Memberships
+    const insertMember = db.prepare(`
+      INSERT INTO institution_members (id, institution_id, user_id, role, department_id, student_id_number, status, joined_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertMember.run("imem_ui_admin", "inst_ui_csc", "usr_admin", "owner", "idept_ui_fasilkom", "NIP-19850101", "active", now, now);
+    insertMember.run("imem_ui_budi", "inst_ui_csc", "usr_budi", "instructor", "idept_ui_fasilkom", "NIDN-0412345", "active", now, now);
+    insertMember.run("imem_ui_citra", "inst_ui_csc", "usr_citra", "student", "idept_ui_fasilkom", "NIM-210600123", "active", now, now);
+    insertMember.run("imem_idnet_admin", "inst_smk_idnet", "usr_admin", "owner", "idept_idnet_tkj", "EMP-001", "active", now, now);
+    insertMember.run("imem_idnet_budi", "inst_smk_idnet", "usr_budi", "student", "idept_idnet_tkj", "NIS-20260401", "active", now, now);
+
+    // Seed Classes / Cohorts
+    const insertClass = db.prepare(`
+      INSERT INTO institution_classes (id, institution_id, department_id, name, academic_term, instructor_user_id, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertClass.run("icls_ui_cs401", "inst_ui_csc", "idept_ui_fasilkom", "CS-401 Network & Web Penetration Testing", "2026/2027 Ganjil", "usr_budi", "active", now);
+    insertClass.run("icls_idnet_tkj12", "inst_smk_idnet", "idept_idnet_tkj", "TKJ-XII-A Cyber Defense Cohort", "Tahun Ajaran 2026", "usr_admin", "active", now);
+
+    // Seed Class Students
+    const insertClassStudent = db.prepare(`
+      INSERT OR IGNORE INTO institution_class_students (class_id, user_id, enrolled_at)
+      VALUES (?, ?, ?)
+    `);
+    insertClassStudent.run("icls_ui_cs401", "usr_citra", now);
+    insertClassStudent.run("icls_idnet_tkj12", "usr_budi", now);
+
+    // Seed Courses
+    const insertCourse = db.prepare(`
+      INSERT INTO institution_courses (
+        id, institution_id, title, code, description, syllabus, module_ids,
+        instructor_user_id, visibility, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertCourse.run(
+      "icrs_ui_adv_sec",
+      "inst_ui_csc",
+      "Advanced Network Security & Threat Defense",
+      "CS401",
+      "Kurikulum spesialis analisis ancaman jaringan, perancangan perimeter firewall, dan investigasi kerentanan aplikasi web modern.",
+      JSON.stringify(["Arsitektur Keamanan Jaringan", "Vulnerability Assessment", "Packet Analysis Forensik", "Hardening Server"]),
+      JSON.stringify(["networking", "web-security", "reverse-engineering"]),
+      "usr_budi",
+      "institution_wide",
+      "published",
+      now,
+      now
+    );
+
+    insertCourse.run(
+      "icrs_idnet_core",
+      "inst_smk_idnet",
+      "Kurikulum Kejuruan Administrasi Server & Keamanan Siber",
+      "TKJ-SEC",
+      "Fondasi teknis konfigurasi server Linux, manajemen port & routing, dan analisis payload mencurigakan.",
+      JSON.stringify(["Administrasi Linux Dasar", "Routing & CIDR Subnetting", "Analisis Log Keamanan"]),
+      JSON.stringify(["linux", "networking", "digital-forensics"]),
+      "usr_admin",
+      "class_only",
+      "published",
+      now,
+      now
+    );
+
+    // Seed Course Assignment
+    const insertAssignment = db.prepare(`
+      INSERT INTO institution_course_assignments (
+        id, institution_id, course_id, class_id, title, instructions, due_date, max_score, created_by, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAssignment.run(
+      "iasg_ui_wireshark",
+      "inst_ui_csc",
+      "icrs_ui_adv_sec",
+      "icls_ui_cs401",
+      "Analisis Paket Malicious Traffic PCAP",
+      "Unduh file pcap rekaman serangan brute-force SSH. Ekstrak IP penyerang, timestamp mulai serangan, dan susun aturan deteksi Snort.",
+      new Date(Date.now() + 7 * 86400000).toISOString(),
+      100,
+      "usr_budi",
+      now
+    );
+
+    // Seed Submission
+    const insertSub = db.prepare(`
+      INSERT INTO institution_submissions (
+        id, institution_id, assignment_id, user_id, content, file_url, score, feedback, graded_by, graded_at, submitted_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertSub.run(
+      "isub_ui_citra",
+      "inst_ui_csc",
+      "iasg_ui_wireshark",
+      "usr_citra",
+      "Laporan analisis paket: Penyerang menggunakan IP 198.51.100.23 dengan 450 percobaan autentikasi SSH per menit. Snort rule: alert tcp 198.51.100.23 any -> any 22 (msg:\"SSH Brute Force\"; sid:100001;)",
+      "https://example.com/reports/citra_wireshark_report.pdf",
+      95,
+      "Analisis sangat komprehensif, signature Snort akurat dan langsung dapat diimplementasikan di gateway sensor.",
+      "usr_budi",
+      now,
+      now
+    );
+
+    // Seed Cyber Range Lab Assignment
+    const insertLabAsg = db.prepare(`
+      INSERT INTO institution_lab_assignments (id, institution_id, class_id, template_id, title, due_date, required_flag, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertLabAsg.run(
+      "ilab_ui_topology",
+      "inst_ui_csc",
+      "icls_ui_cs401",
+      "tpl-net-topo",
+      "Praktikum Terisolasi: Segmentasi Multi-Tier Subnet & Hardening Gateway",
+      new Date(Date.now() + 5 * 86400000).toISOString(),
+      "FLAG{subnet_isolation_verified}",
+      now
+    );
+
+    // Seed Institutional Assessment (Private CTF / Exam)
+    const insertAssessment = db.prepare(`
+      INSERT INTO institution_assessments (
+        id, institution_id, class_id, title, description, time_limit_minutes, questions, starts_at, ends_at, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAssessment.run(
+      "iass_ui_midterm",
+      "inst_ui_csc",
+      "icls_ui_cs401",
+      "Ujian Tengah Semester: Penetration Testing & Web Defense",
+      "Asesmen terstruktur berbatas waktu untuk menguji pemahaman mitigasi OWASP Top 10 dan analisis paket jaringan.",
+      90,
+      JSON.stringify([
+        {
+          id: "q1",
+          prompt: "Manakah teknik pertahanan paling efektif untuk menghentikan serangan SQL Injection pada aplikasi backend?",
+          options: ["Menghapus karakter kutip manual", "Parameterized Prepared Statements", "Base64 Encoding input pengguna", "Mengganti port database"],
+          answer_hash: hashString("Parameterized Prepared Statements"),
+          points: 50
+        },
+        {
+          id: "q2",
+          prompt: "Header keamanan HTTP apa yang secara efektif memitigasi serangan Clickjacking pada browser modern?",
+          options: ["X-Content-Type-Options: nosniff", "Strict-Transport-Security", "Content-Security-Policy: frame-ancestors 'none'", "Server: Apache"],
+          answer_hash: hashString("Content-Security-Policy: frame-ancestors 'none'"),
+          points: 50
+        }
+      ]),
+      now,
+      new Date(Date.now() + 14 * 86400000).toISOString(),
+      now
+    );
+
+    // Seed Institution Certificate
+    const certHash = crypto.createHash("sha256").update("CERT-UI-2026-CS401-001:usr_citra:inst_ui_csc").digest("hex");
+    const insertCert = db.prepare(`
+      INSERT INTO institution_certificates (
+        id, institution_id, user_id, course_id, certificate_code, verification_hash,
+        title, issue_date, issuing_authority, criteria, is_revoked, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+    `);
+
+    insertCert.run(
+      "icert_ui_citra",
+      "inst_ui_csc",
+      "usr_citra",
+      "icrs_ui_adv_sec",
+      "CERT-UI-2026-CS401-001",
+      certHash,
+      "Sertifikat Kompetensi: Advanced Network Security & Threat Defense",
+      now.split("T")[0],
+      "Center for Cyber Security & Defense Universitas Indonesia",
+      "Menyelesaikan 100% materi kuliah, tugas analisis paket PCAP, dan praktikum laboratorium virtual terisolasi.",
+      now
+    );
+
+    // Seed AI Settings
+    const insertAi = db.prepare(`
+      INSERT INTO institution_ai_settings (
+        institution_id, ai_enabled, custom_system_prompt, allowed_domains, require_human_grade_approval, monthly_token_usage, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAi.run(
+      "inst_ui_csc",
+      1,
+      "Anda adalah asisten akademik cybersecurity resmi Fakultas Ilmu Komputer UI. Bantu mahasiswa memahami konsep tanpa memberikan flag CTF atau jawaban ujian langsung.",
+      JSON.stringify(["linux", "networking", "web", "crypto", "forensics", "reverse"]),
+      1,
+      128000,
+      now
+    );
+
+    insertAi.run(
+      "inst_smk_idnet",
+      1,
+      "Anda adalah mentor AI untuk siswa SMK ID-Networkers. Berikan bimbingan ramah, praktis, dan terstruktur sesuai kurikulum kejuruan.",
+      JSON.stringify(["linux", "networking", "forensics"]),
+      1,
+      64000,
+      now
+    );
+
+    // Seed Audit Log
+    const insertAudit = db.prepare(`
+      INSERT INTO institution_audit_logs (id, institution_id, user_id, action, target_type, target_id, details, ip_address, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAudit.run("iaud_init_ui", "inst_ui_csc", "usr_admin", "INSTITUTION_INITIALIZED", "institution", "inst_ui_csc", JSON.stringify({ note: "Enterprise workspace provisioned" }), "127.0.0.1", now);
+    insertAudit.run("iaud_init_idnet", "inst_smk_idnet", "usr_admin", "INSTITUTION_INITIALIZED", "institution", "inst_smk_idnet", JSON.stringify({ note: "Education workspace provisioned" }), "127.0.0.1", now);
   }
 }
 

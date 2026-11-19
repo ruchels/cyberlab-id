@@ -101,6 +101,11 @@ export function Footer() {
             </h4>
             <ul className="space-y-2 font-mono text-xs">
               <li>
+                <Link href="/institutions" className="text-[var(--color-accent)] font-bold hover:underline transition-colors">
+                  Enterprise & Institusi
+                </Link>
+              </li>
+              <li>
                 <Link href="/arena" className="hover:text-[var(--color-accent)] transition-colors">
                   CTF Competition Arena
                 </Link>

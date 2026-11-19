@@ -1,7 +1,7 @@
 import React from "react";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger" | "accent";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
@@ -33,6 +33,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] bg-transparent",
       danger:
         "bg-[var(--color-danger)] text-white hover:bg-red-600 font-semibold",
+      accent:
+        "bg-[var(--color-accent)] text-[#05080e] hover:bg-[var(--color-accent-dark)] font-semibold shadow-sm hover:shadow-[0_0_15px_rgba(0,255,157,0.25)]",
     };
 
     const sizeStyles = {

@@ -7,7 +7,7 @@ export function Badge({
   className = "",
 }: {
   children: React.ReactNode;
-  variant?: "default" | "success" | "warning" | "danger" | "info" | "accent" | "secondary" | "destructive";
+  variant?: "default" | "success" | "warning" | "danger" | "info" | "accent" | "secondary" | "destructive" | "outline";
   size?: "sm" | "md";
   className?: string;
 }) {
@@ -28,6 +28,8 @@ export function Badge({
       "bg-sky-950/60 text-sky-400 border border-sky-800/60",
     accent:
       "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/30",
+    outline:
+      "bg-transparent text-[var(--color-text-secondary)] border border-[var(--color-border)]",
   };
 
   const sizeStyles = {

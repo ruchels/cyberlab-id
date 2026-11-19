@@ -5,6 +5,73 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.9.0] — Phase 9: Enterprise & Institutional Edition (2026-11-19)
+
+### Added
+- **Multi-Tenant Architecture & Workspace Isolation**:
+  - Secure tenant workspace isolation supporting universities, vocational schools (SMK), high schools, training academies, and corporate security training departments.
+  - Strict server-side authorization guard (`validateTenantAccess`) enforcing role hierarchy: `owner` > `admin` > `academic_director` > `department_admin` > `instructor` > `ta` > `auditor` > `student` / `trainee`.
+  - Comprehensive Anti-IDOR (Insecure Direct Object Reference) verification (`verifyTenantResourceOwnership`) preventing cross-tenant access to courses, classes, submissions, labs, and certificates.
+  - Multi-membership support enabling users to belong to different institutions with independent roles.
+  - Immediate suspension enforcement blocking non-owner access for suspended institutions.
+- **Academic Structure Management**:
+  - Organizational hierarchy with faculties/departments (`institution_departments`), classes/cohorts (`institution_classes`), and academic terms/semesters.
+  - Student enrollment and instructor assignment workflows with NIM / NIS / Employee ID tracking.
+  - Bulk CSV import (`/api/institutions/[id]/import`) for rapid onboarding of student and instructor rosters with pre-validation and preview.
+- **Institutional Learning Management System (LMS)**:
+  - Institutional course catalog (`institution_courses`) integrated with CyberLab-ID core curriculum modules (Linux, Networking, Web, Crypto, Forensics, Reverse Engineering).
+  - Course assignment delivery, student submission portal, and instructor grading queue with feedback notes.
+- **Practical Cyber Range Institutional Integration**:
+  - Class-scoped practical lab assignments (`institution_lab_assignments`) using pre-approved virtual templates (`tpl-net-topo`, `tpl-linux-core`, `tpl-web-vuln`).
+  - Resource quota enforcement according to institutional subscription tier (concurrency limits, CPU, memory, storage).
+- **Institutional Assessments & Private CTF Arena**:
+  - Timed assessments and class competitions (`institution_assessments`) with configurable duration limits.
+  - Anti-leak question banks with answers stored as SHA-256 cryptographic hashes without client disclosure.
+  - Server-side scoring and validation engine preventing answer sniffing and score tampering.
+- **Cryptographic Institutional Certification**:
+  - Internal certificate issuance (`institution_certificates`) with unique codes and tamper-proof SHA-256 verification hashes.
+  - Public verification support without disclosing private student emails.
+  - Administrative certificate revocation workflow with preserved justification logs.
+- **Real-Time Analytics & Institutional Reporting**:
+  - Live computed metrics on student enrollment, department distributions, submission averages, and certification outcomes.
+  - One-click CSV and JSON report exports (`/api/institutions/[id]/reports?format=csv`).
+- **Enterprise AI Governance**:
+  - Tenant-isolated AI tutor controls (`institution_ai_settings`) with custom institutional system prompts and domain restrictions.
+  - Strict human-in-the-loop requirement: AI is prohibited from automatically issuing final grades, disciplinary actions, or graduation credentials.
+- **Testing & Verification**:
+  - 68 automated unit and integration tests in `test_phase9.mjs` verifying multi-tenancy, cross-tenant rejection, role hierarchies, LMS workflows, CTF scoring, certificate hashes, and audit logging.
+  - Total platform regression suite: 278 / 278 tests passed (100% pass rate).
+  - Next.js production compilation: 97 / 97 routes compiled successfully.
+
+---
+
+## [2.8.0] — Phase 8: Global Ecosystem, External Integrations & International Collaboration (2026-11-19)
+
+### Added
+- **Global Platform Localization & Region Neutrality**:
+  - Full Indonesian and English translations with persistent user preference storage.
+  - International timezone selector with localized timestamp rendering.
+- **Institutional & Community Partnerships (`/partnerships`)**:
+  - Public directory of verified academic, vocational, and research partners.
+  - Online partnership application workflow with administrative review queue.
+- **Open-Source Contributor Hub (`/contributors`)**:
+  - Task board (`contribution_tasks`) for code, documentation, and translations with claim/PR lifecycle and XP rewards.
+- **External Cybersecurity Knowledge Integrations (`/knowledge-explorer`)**:
+  - MITRE ATT&CK Matrix explorer with tactic/technique mapping.
+  - NIST CSF v2.0 functions navigator (Identify, Protect, Detect, Respond, Recover).
+  - OWASP Top 10 risks with CWE mapping and defensive mitigations.
+  - Real-time/cached NIST NVD CVE lookup with CVSS base scores and defensive guidance.
+- **Public Developer API v1 (`/developers`, `/api/v1/*`)**:
+  - Developer portal with SHA-256 hashed API key management, granular scopes, and sliding-window rate limiting.
+  - Public endpoints for curriculum modules, upcoming events, published research, and CTF schedules with strict data minimization.
+- **GDPR & Privacy Compliance**:
+  - User data export in JSON (`/api/user/export-data`).
+  - Permanent account deletion workflow with confirmation guard (`/api/user/delete-account`).
+- **Automated Verification**:
+  - 50 automated tests in `test_phase8.mjs` (210 platform tests, 100% pass rate).
+
+---
+
 ## [2.7.0] — Phase 7: Intelligence & Advanced Automation (2026-11-19)
 
 ### Added
