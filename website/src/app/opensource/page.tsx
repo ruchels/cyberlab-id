@@ -107,12 +107,12 @@ export default function OpenSourceHubPage() {
             </p>
             <div className="space-y-2 bg-black/60 p-4 rounded-xl border border-[var(--color-border)] overflow-x-auto text-[var(--color-text)]">
               <div className="text-[var(--color-text-muted)]"># 1. Clone repository CyberLab-ID</div>
-              <div>git clone https://github.com/cyberlab-id/cyberlab-id.git</div>
+              <div>git clone https://github.com/ruchels/cyberlab-id.git</div>
               <div>cd cyberlab-id/website</div>
               <div className="text-[var(--color-text-muted)] pt-2"># 2. Install dependencies</div>
               <div>npm install</div>
               <div className="text-[var(--color-text-muted)] pt-2"># 3. Jalankan automated test suite</div>
-              <div>node ../test_phase6.mjs</div>
+              <div>node ../test_tools.mjs</div>
               <div className="text-[var(--color-text-muted)] pt-2"># 4. Jalankan local dev server</div>
               <div>npm run dev</div>
             </div>

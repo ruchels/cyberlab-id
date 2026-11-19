@@ -60,17 +60,11 @@ jobs:
           cd website
           npm ci
 
-      - name: Run Phase 2 Security Tools Verification (29 Tests)
+      - name: Run Security Tools Verification
         run: node test_tools.mjs
 
-      - name: Run Phase 3 Auth & CTF Platform Verification (12 Tests)
-        run: node test_phase3.mjs
-
-      - name: Run Phase 4 Cyber Range Engine Verification (21 Tests)
-        run: node test_phase4.mjs
-
-      - name: Run Phase 5 Production Readiness Verification (18 Tests)
-        run: node test_phase5.mjs
+      - name: Run Release Verification Suite
+        run: node test_sidebar_and_release.mjs
 
       - name: Run Database Backup & Restore Integrity Test (14 Tests)
         run: node scripts/test_backup_restore.mjs
