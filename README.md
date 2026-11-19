@@ -104,6 +104,28 @@
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+### 🚩 Server-Side CTF Platform (`/challenges`)
+- Jeopardy-style Capture The Flag across 7 categories
+- **Zero Client Flag Disclosure**: SHA-256 hashed server-side validation
+- Constant-time comparison (`timingSafeEqual`)
+- Anti-brute force rate limiting (10 submits/min)
+- Solved tracking, instant XP rewards, and anti-double-dipping
+
+</td>
+<td width="50%">
+
+### 💬 Community & Ecosystem (`/community` & `/leaderboard`)
+- Discussion forum with 9 categories & search/sort
+- Threaded comments, likes, and moderation reporting
+- **Global Leaderboard**: Real-time rank calculation & top 3 podium
+- **In-App Notifications**: Real-time notifications for solves & replies
+- **Admin Dashboard (`/admin`)**: User RBAC, CTF authoring, and audit logs
+
+</td>
+</tr>
 </table>
 
 ---

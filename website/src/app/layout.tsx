@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { LanguageProvider } from "@/lib/i18n";
+import { AuthProvider } from "@/lib/auth-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -50,11 +51,13 @@ export default function RootLayout({
     <html lang="id" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)] selection:bg-[var(--color-accent)] selection:text-black">
         <LanguageProvider>
-          <Navbar />
-          <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </main>
-          <Footer />
+          <AuthProvider>
+            <Navbar />
+            <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              {children}
+            </main>
+            <Footer />
+          </AuthProvider>
         </LanguageProvider>
       </body>
     </html>

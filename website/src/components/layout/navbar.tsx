@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
 import {
   Shield,
   Terminal,
@@ -17,12 +18,18 @@ import {
   Globe,
   FlaskConical,
   Award,
+  MessageSquare,
+  Medal,
+  Bell,
+  User as UserIcon,
+  Lock,
 } from "lucide-react";
-import { GithubIcon } from "@/components/ui";
+import { GithubIcon, Badge } from "@/components/ui";
 
 export function Navbar() {
   const pathname = usePathname();
   const { locale, setLocale, t } = useLanguage();
+  const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
@@ -31,9 +38,10 @@ export function Navbar() {
     { href: "/labs", label: t.nav.labs, icon: FlaskConical },
     { href: "/tools", label: t.nav.tools, icon: Wrench },
     { href: "/challenges", label: t.nav.challenges, icon: Trophy },
+    { href: "/community", label: (t.nav as any).community || "Komunitas", icon: MessageSquare },
+    { href: "/leaderboard", label: (t.nav as any).leaderboard || "Peringkat", icon: Medal },
     { href: "/progress", label: t.nav.progress, icon: Award },
     { href: "/docs", label: t.nav.docs, icon: FileText },
-    { href: "/about", label: t.nav.about, icon: Info },
   ];
 
   const toggleLanguage = () => {
@@ -41,7 +49,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-[#090d16]/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-[var(--color-border)] bg-[#090d16]/95 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <Link
@@ -54,13 +62,13 @@ export function Navbar() {
           <span>
             CyberLab<span className="text-[var(--color-accent)] font-extrabold">-ID</span>
           </span>
-          <span className="hidden sm:inline-block text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
-            v0.1
+          <span className="hidden lg:inline-block text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
+            v0.3
           </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden xl:flex items-center gap-1">
           {navItems.map((item) => {
             const isActive =
               item.href === "/"
@@ -70,7 +78,7 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-3 py-1.5 rounded-md text-xs font-mono font-medium transition-colors duration-150 flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-md text-xs font-mono font-medium transition-colors duration-150 flex items-center gap-1.5 ${
                   isActive
                     ? "bg-[var(--color-surface-elevated)] text-[var(--color-accent)] border border-[var(--color-border)]"
                     : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
@@ -83,8 +91,22 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right Actions: Lang toggle & GitHub */}
+        {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Notifications Bell */}
+          <Link
+            href="/notifications"
+            className="relative p-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
+            title="Notifikasi"
+          >
+            <Bell className="w-4 h-4" />
+            {user && (user.unreadNotifications ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {user.unreadNotifications}
+              </span>
+            )}
+          </Link>
+
           {/* Language Switcher */}
           <button
             onClick={toggleLanguage}
@@ -95,22 +117,52 @@ export function Navbar() {
             <span className="font-bold">{locale.toUpperCase()}</span>
           </button>
 
-          {/* GitHub Repo Link */}
-          <a
-            href="https://github.com/cyberlab-id/cyberlab-id"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-mono border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
-            title="GitHub Repository"
-          >
-            <GithubIcon className="w-3.5 h-3.5" />
-            <span>GitHub</span>
-          </a>
+          {/* User Auth Info or Login button */}
+          {user ? (
+            <div className="flex items-center gap-2 font-mono">
+              {user.role === "admin" && (
+                <Link href="/admin">
+                  <Badge variant="accent" size="sm" className="hidden sm:inline-flex">
+                    ADMIN
+                  </Badge>
+                </Link>
+              )}
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-accent)]/50 transition-colors text-xs"
+              >
+                <div className="w-5 h-5 rounded bg-[var(--color-accent)]/20 text-[var(--color-accent)] flex items-center justify-center font-bold text-[10px]">
+                  {user.displayName.slice(0, 1).toUpperCase()}
+                </div>
+                <span className="hidden sm:inline text-[var(--color-text)] font-bold truncate max-w-[100px]">
+                  {user.displayName}
+                </span>
+                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1 rounded">
+                  {user.totalXp} XP
+                </span>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 font-mono">
+              <Link
+                href="/auth/login"
+                className="px-2.5 py-1.5 rounded text-xs border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-elevated)] text-[var(--color-text)] transition-colors font-medium"
+              >
+                Masuk
+              </Link>
+              <Link
+                href="/auth/register"
+                className="hidden sm:inline-block px-2.5 py-1.5 rounded text-xs bg-[var(--color-accent)] text-[var(--color-background)] font-bold hover:opacity-90 transition-opacity"
+              >
+                Daftar
+              </Link>
+            </div>
+          )}
 
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
+            className="xl:hidden p-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
             aria-label="Toggle Navigation Menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -120,7 +172,7 @@ export function Navbar() {
 
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-[var(--color-border)] bg-[#090d16] px-4 pt-2 pb-4 space-y-1">
+        <div className="xl:hidden border-b border-[var(--color-border)] bg-[#090d16] px-4 pt-2 pb-4 space-y-1">
           {navItems.map((item) => {
             const isActive =
               item.href === "/"
@@ -142,9 +194,19 @@ export function Navbar() {
               </Link>
             );
           })}
+          {user?.role === "admin" && (
+            <Link
+              href="/admin"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-sm font-mono flex items-center gap-2.5 text-red-400 bg-red-500/10"
+            >
+              <Lock className="w-4 h-4" />
+              Panel Administrator
+            </Link>
+          )}
           <div className="pt-2 border-t border-[var(--color-border-subtle)] flex items-center justify-between">
             <span className="text-xs text-[var(--color-text-muted)] font-mono">
-              Bahasa Aktif: {locale === "id" ? "Bahasa Indonesia" : "English"}
+              Bahasa: {locale === "id" ? "Bahasa Indonesia" : "English"}
             </span>
             <button
               onClick={toggleLanguage}

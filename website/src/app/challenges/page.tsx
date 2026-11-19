@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Card, CardHeader, CardBody, CardFooter, Badge, Button, Input } from "@/components/ui";
+import Link from "next/link";
+import { Card, CardHeader, CardBody, Badge, Button, Input } from "@/components/ui";
 import {
   Trophy,
   Flag,
@@ -13,394 +14,412 @@ import {
   KeyRound,
   Filter,
   Sparkles,
+  Lock,
+  ArrowRight,
+  ShieldCheck,
+  Search,
 } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 interface Challenge {
   id: string;
   title: string;
-  category: "cryptography" | "networking" | "forensics" | "web" | "reverse";
-  difficulty: "beginner" | "intermediate" | "advanced";
-  points: number;
   description: string;
+  category: string;
+  difficulty: string;
+  points: number;
   hint: string;
-  flag: string;
-  acceptedFlags: string[];
-  solution: string;
+  instructions: string;
+  attachment_url: string;
+  solves_count: number;
+  isSolved: boolean;
 }
 
-const CHALLENGES_DATA: Challenge[] = [
-  {
-    id: "caesar-says-hello",
-    title: "Caesar Says Hello",
-    category: "cryptography",
-    difficulty: "beginner",
-    points: 50,
-    description:
-      "Julius Caesar mengirimkan ciphertext rahasia: 'Fdhvdu flskhu lv ixq'. Pecahkan pesan asli dan serahkan flag-nya!",
-    hint: "Gunakan teknik geser mundur alfabet (Caesar Cipher Shift 3) atau gunakan CyberLab-ID Cipher Toolkit.",
-    flag: "CYBERLAB{Caesar cipher is fun}",
-    acceptedFlags: ["CYBERLAB{Caesar cipher is fun}", "Caesar cipher is fun"],
-    solution:
-      "Setiap huruf digeser mundur sebanyak 3 langkah: F->C, d->a, h->e, v->s, d->a, u->r. Plaintext yang dihasilkan adalah 'Caesar cipher is fun'.",
-  },
-  {
-    id: "base64-basics",
-    title: "Base64 Encoding Basics",
-    category: "cryptography",
-    difficulty: "beginner",
-    points: 25,
-    description:
-      "Seorang sysadmin mencurigai string berikut di file konfigurasi: 'Q3liZXJMYWItSUQ='. Temukan data aslinya!",
-    hint: "Ingat bahwa Base64 adalah skema encoding biner-ke-teks dengan karakter padding '=', bukan algoritma enkripsi rahasia.",
-    flag: "CYBERLAB{CyberLab-ID}",
-    acceptedFlags: ["CYBERLAB{CyberLab-ID}", "CyberLab-ID"],
-    solution:
-      "Lakukan decode Base64 menggunakan terminal (`echo 'Q3liZXJMYWItSUQ=' | base64 -d`) atau gunakan Cipher Toolkit CyberLab-ID. Hasil aslinya adalah 'CyberLab-ID'.",
-  },
-  {
-    id: "hash-match",
-    title: "Hash Signature Identifier",
-    category: "cryptography",
-    difficulty: "beginner",
-    points: 50,
-    description:
-      "Seorang analis menemukan nilai hash 'a59f94ef98caeb4cac0c900c2fa730a6' yang berasal dari kata 'cyberlab'. Algoritma hash apa yang menghasilkan digest sepanjang 32 karakter hexadecimal ini?",
-    hint: "Hitung jumlah karakter hex (32 karakter * 4 bit = 128 bit). Algoritma legendaris karya Ron Rivest dari tahun 1991.",
-    flag: "CYBERLAB{MD5}",
-    acceptedFlags: ["CYBERLAB{MD5}", "MD5", "md5"],
-    solution:
-      "Output memiliki panjang 32 digit heksadesimal yang setara dengan 128 bit. Ini adalah karakteristik khas dari algoritma MD5 (Message Digest 5).",
-  },
-  {
-    id: "file-identity",
-    title: "File Identity & Magic Bytes",
-    category: "forensics",
-    difficulty: "beginner",
-    points: 50,
-    description:
-      "Sebuah file rusak tidak memiliki ekstensi, namun 8 byte pertamanya terbaca di hex editor: '89 50 4E 47 0D 0A 1A 0A'. Format file apakah ini?",
-    hint: "Perhatikan karakter ASCII dari byte 50 4E 47 ('P', 'N', 'G'). Format gambar lossless web populer.",
-    flag: "CYBERLAB{PNG}",
-    acceptedFlags: ["CYBERLAB{PNG}", "PNG", "png"],
-    solution:
-      "Magic bytes 89 50 4E 47 0D 0A 1A 0A adalah tanda tangan resmi untuk file citra PNG (Portable Network Graphics).",
-  },
-  {
-    id: "subnet-sleuth",
-    title: "Subnet Sleuth: Host Capacity",
-    category: "networking",
-    difficulty: "intermediate",
-    points: 75,
-    description:
-      "Departemen IT perusahaan menetapkan subnet blok '172.16.50.0/22'. Berapa jumlah pasti host IP yang dapat digunakan secara valid (usable hosts) oleh komputer klien?",
-    hint: "Panjang IPv4 adalah 32 bit. Dengan prefix /22, berapa sisa bit untuk host? Gunakan rumus 2^h - 2 (dikurangi alamat Network dan Broadcast).",
-    flag: "CYBERLAB{1022}",
-    acceptedFlags: ["CYBERLAB{1022}", "1022"],
-    solution:
-      "Host bits = 32 - 22 = 10 bits. Total alamat = 2^10 = 1024. Usable hosts = 1024 - 2 = 1022 alamat (karena network address dan broadcast address dicadangkan).",
-  },
-  {
-    id: "xor-key-hunt",
-    title: "XOR Key Hunt",
-    category: "cryptography",
-    difficulty: "intermediate",
-    points: 100,
-    description:
-      "Sebuah payload malware di-obfuscate menggunakan single-byte XOR key. Hex stream yang ditemukan: '2a 20 2b 2c 3b 25 28 34 20 3a 36 28 3e 2c 24 2c'. Dekripsi pesan bahasa Inggris tersebut!",
-    hint: "Coba gunakan brute-force single byte (0 s.d 255) atau cari karakter pertama yang seharusnya berupa flag pembuka 'C'. Jika 0x2A XOR Key = 'C' (0x43), maka Key = 0x2A XOR 0x43 = 0x69.",
-    flag: "CYBERLAB{CYBERLAB_SECRET}",
-    acceptedFlags: ["CYBERLAB{CYBERLAB_SECRET}", "CYBERLAB_SECRET"],
-    solution:
-      "Key yang digunakan adalah 0x69 (desimal 105 atau karakter 'i'). Melakukan operasi XOR pada setiap byte menghasilkan pesan 'CYBERLAB_SECRET'.",
-  },
-];
-
 export default function ChallengesPage() {
+  const { user, refreshUser } = useAuth();
+
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all");
-  const [solvedIds, setSolvedIds] = useState<string[]>([]);
-  const [flagInputs, setFlagInputs] = useState<{ [key: string]: string }>({});
-  const [submissionFeedback, setSubmissionFeedback] = useState<{
-    [key: string]: { status: "correct" | "wrong"; message: string };
-  }>({});
-  const [revealedHints, setRevealedHints] = useState<{ [key: string]: boolean }>({});
-  const [revealedSolutions, setRevealedSolutions] = useState<{ [key: string]: boolean }>({});
+  const [activeFilter, setActiveFilter] = useState<"all" | "solved" | "unsolved">("all");
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("cyberlab_solved_challenges");
-    if (saved) {
-      try {
-        setSolvedIds(JSON.parse(saved));
-      } catch {}
-    }
-  }, []);
+  // Submission state per challenge
+  const [flagInputs, setFlagInputs] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState<Record<string, boolean>>({});
+  const [submitFeedback, setSubmitFeedback] = useState<
+    Record<string, { success: boolean; message: string; badges?: string[] }>
+  >({});
+  const [revealedHints, setRevealedHints] = useState<Record<string, boolean>>({});
 
-  const totalPoints = CHALLENGES_DATA.reduce((acc, curr) => acc + curr.points, 0);
-  const earnedPoints = CHALLENGES_DATA.filter((c) => solvedIds.includes(c.id)).reduce(
-    (acc, curr) => acc + curr.points,
-    0
-  );
-
-  const handleFlagSubmit = (challenge: Challenge) => {
-    const input = (flagInputs[challenge.id] || "").trim();
-    if (!input) return;
-
-    const isCorrect = challenge.acceptedFlags.some(
-      (f) => f.toLowerCase() === input.toLowerCase()
-    );
-
-    if (isCorrect) {
-      setSubmissionFeedback((prev) => ({
-        ...prev,
-        [challenge.id]: {
-          status: "correct",
-          message: `Selamat! Flag benar (+${challenge.points} Poin)`,
-        },
-      }));
-      if (!solvedIds.includes(challenge.id)) {
-        const updated = [...solvedIds, challenge.id];
-        setSolvedIds(updated);
-        localStorage.setItem("cyberlab_solved_challenges", JSON.stringify(updated));
+  const fetchChallenges = async () => {
+    try {
+      const res = await fetch("/api/ctf/challenges");
+      if (res.ok) {
+        const data = await res.json();
+        setChallenges(data.challenges || []);
       }
-    } else {
-      setSubmissionFeedback((prev) => ({
-        ...prev,
-        [challenge.id]: {
-          status: "wrong",
-          message: "Flag salah! Periksa kembali jawaban Anda atau buka petunjuk.",
-        },
-      }));
+    } catch (err) {
+      console.error("Failed to load challenges:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredChallenges = CHALLENGES_DATA.filter((c) => {
-    const matchCat = selectedCategory === "all" || c.category === selectedCategory;
-    const matchDiff = selectedDifficulty === "all" || c.difficulty === selectedDifficulty;
-    return matchCat && matchDiff;
+  useEffect(() => {
+    fetchChallenges();
+  }, [user]);
+
+  const handleFlagSubmit = async (challengeId: string) => {
+    const input = flagInputs[challengeId];
+    if (!input || input.trim().length === 0) return;
+
+    setSubmitting((prev) => ({ ...prev, [challengeId]: true }));
+    setSubmitFeedback((prev) => ({ ...prev, [challengeId]: undefined as any }));
+
+    try {
+      const res = await fetch("/api/ctf/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challengeId, flag: input.trim() }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setSubmitFeedback((prev) => ({
+          ...prev,
+          [challengeId]: {
+            success: true,
+            message: data.message,
+            badges: data.unlockedBadges,
+          },
+        }));
+        // Update local challenge state to solved
+        setChallenges((prev) =>
+          prev.map((c) =>
+            c.id === challengeId ? { ...c, isSolved: true, solves_count: c.solves_count + 1 } : c
+          )
+        );
+        await refreshUser();
+      } else {
+        setSubmitFeedback((prev) => ({
+          ...prev,
+          [challengeId]: {
+            success: false,
+            message: data.error || data.message || "Flag yang Anda masukkan salah.",
+          },
+        }));
+      }
+    } catch {
+      setSubmitFeedback((prev) => ({
+        ...prev,
+        [challengeId]: {
+          success: false,
+          message: "Gagal menghubungi server verifikasi.",
+        },
+      }));
+    } finally {
+      setSubmitting((prev) => ({ ...prev, [challengeId]: false }));
+    }
+  };
+
+  const toggleHint = (id: string) => {
+    setRevealedHints((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const filteredChallenges = challenges.filter((c) => {
+    const matchCat = selectedCategory === "all" || c.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchDiff = selectedDifficulty === "all" || c.difficulty.toLowerCase() === selectedDifficulty.toLowerCase();
+    const matchStatus =
+      activeFilter === "all" ||
+      (activeFilter === "solved" && c.isSolved) ||
+      (activeFilter === "unsolved" && !c.isSolved);
+    const matchSearch =
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      c.description.toLowerCase().includes(search.toLowerCase()) ||
+      c.category.toLowerCase().includes(search.toLowerCase());
+
+    return matchCat && matchDiff && matchStatus && matchSearch;
   });
 
+  const totalPoints = challenges.reduce((sum, c) => sum + c.points, 0);
+  const earnedPoints = challenges
+    .filter((c) => c.isSolved)
+    .reduce((sum, c) => sum + c.points, 0);
+  const solvedCount = challenges.filter((c) => c.isSolved).length;
+
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
-      {/* Header & Scoreboard Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--color-border)] pb-6">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-[var(--color-accent)] uppercase tracking-wider mb-1">
-            <Trophy className="w-3.5 h-3.5" />
-            <span>CyberLab-ID CTF &amp; Lab Challenges</span>
-          </div>
-          <h1 className="text-3xl font-mono font-bold text-[var(--color-text)]">
-            Tantangan Praktikum &amp; CTF
-          </h1>
-          <p className="text-sm text-[var(--color-text-secondary)] mt-1 max-w-2xl">
-            Asah pemahaman praktis Anda melalui skenario Capture The Flag (CTF) yang legal, aman, dan mendidik.
-          </p>
+    <div className="min-h-screen py-8 space-y-8 max-w-7xl mx-auto font-mono">
+      {/* Header Banner */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Badge variant="accent" size="sm">
+            <Trophy className="w-3.5 h-3.5 mr-1" />
+            CAPTURE THE FLAG PLATFORM
+          </Badge>
+          <span className="text-xs text-[var(--color-text-muted)]">
+            Validasi Server-Side Aman • Jeopardy Style
+          </span>
         </div>
 
-        {/* User Scorecard */}
-        <div className="p-3.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] flex items-center gap-4 font-mono">
-          <div className="w-10 h-10 rounded-lg bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 flex items-center justify-center text-[var(--color-accent)]">
-            <Sparkles className="w-5 h-5" />
-          </div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--color-border-subtle)] pb-6">
           <div>
-            <div className="text-[10px] text-[var(--color-text-muted)] uppercase">Skor Anda</div>
-            <div className="text-base font-bold text-[var(--color-text)]">
-              <span className="text-[var(--color-accent)]">{earnedPoints}</span>
-              <span className="text-xs text-[var(--color-text-muted)]"> / {totalPoints} Pts</span>
+            <h1 className="text-3xl sm:text-4xl font-bold text-[var(--color-text)]">
+              CyberLab CTF Challenges
+            </h1>
+            <p className="mt-2 text-sm text-[var(--color-text-muted)] max-w-2xl leading-relaxed">
+              Asah kemampuan analisis kriptografi, reverse engineering, web exploitation, dan digital forensics.
+              Seluruh flag diverifikasi langsung secara aman di server tanpa eksposur jawaban pada klien.
+            </p>
+          </div>
+
+          {/* Stats Card */}
+          <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] min-w-[260px] flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/30 flex items-center justify-center text-[var(--color-accent)]">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="text-xs text-[var(--color-text-muted)]">Skor CTF Terverifikasi</div>
+              <div className="text-xl font-bold text-[var(--color-text)]">
+                {earnedPoints} / {totalPoints}{" "}
+                <span className="text-xs font-normal text-amber-400">PTS</span>
+              </div>
+              <div className="text-[11px] text-[var(--color-accent)]">
+                {solvedCount} dari {challenges.length} Tantangan Selesai
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Unauthenticated Alert */}
+        {!user && (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 text-xs">
+            <div className="space-y-1">
+              <span className="font-bold text-amber-400 block">
+                Anda Belum Masuk Akun
+              </span>
+              <p className="text-amber-300/80">
+                Masuk atau daftar untuk mengklaim poin XP, menyimpan status penyelesaian flag, dan masuk ke papan peringkat global.
+              </p>
+            </div>
+            <Link href="/auth/login" className="flex-shrink-0">
+              <Button variant="primary" size="sm" className="text-xs font-mono">
+                Masuk Sekarang
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex flex-wrap gap-2">
-          {["all", "cryptography", "networking", "forensics"].map((cat) => (
+      {/* Filters & Search */}
+      <div className="p-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] space-y-4 text-xs">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          <div className="relative flex-1 max-w-md">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari judul tantangan, deskripsi, atau kategori..."
+              className="pl-9 font-mono text-xs"
+            />
+            <Search className="w-4 h-4 text-[var(--color-text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+          </div>
+
+          {/* Solved Status Filter */}
+          <div className="flex items-center gap-1.5 self-start sm:self-auto">
+            <button
+              onClick={() => setActiveFilter("all")}
+              className={`px-3 py-1.5 rounded transition-colors ${
+                activeFilter === "all"
+                  ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold"
+                  : "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              }`}
+            >
+              Semua ({challenges.length})
+            </button>
+            <button
+              onClick={() => setActiveFilter("solved")}
+              className={`px-3 py-1.5 rounded transition-colors ${
+                activeFilter === "solved"
+                  ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold"
+                  : "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              }`}
+            >
+              Selesai ({solvedCount})
+            </button>
+            <button
+              onClick={() => setActiveFilter("unsolved")}
+              className={`px-3 py-1.5 rounded transition-colors ${
+                activeFilter === "unsolved"
+                  ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold"
+                  : "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              }`}
+            >
+              Belum ({challenges.length - solvedCount})
+            </button>
+          </div>
+        </div>
+
+        {/* Category & Difficulty pills */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--color-border-subtle)]">
+          <span className="text-[var(--color-text-muted)] text-[11px] font-bold uppercase mr-1">
+            Kategori:
+          </span>
+          {["all", "Cryptography", "Networking", "Web Exploitation", "Digital Forensics", "Reverse Engineering", "Linux", "Miscellaneous"].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded text-xs font-mono font-medium transition-colors cursor-pointer capitalize ${
-                selectedCategory === cat
-                  ? "bg-[var(--color-accent)] text-[#05080e] font-bold"
-                  : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text)]"
+              className={`px-2.5 py-1 rounded-md text-[11px] transition-colors ${
+                selectedCategory.toLowerCase() === cat.toLowerCase()
+                  ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/50 font-bold"
+                  : "bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-[var(--color-border-subtle)]"
               }`}
             >
               {cat === "all" ? "Semua Kategori" : cat}
             </button>
           ))}
         </div>
+      </div>
 
-        <div className="flex gap-2">
-          {["all", "beginner", "intermediate"].map((diff) => (
-            <button
-              key={diff}
-              onClick={() => setSelectedDifficulty(diff)}
-              className={`px-3 py-1.5 rounded text-xs font-mono font-medium transition-colors cursor-pointer capitalize ${
-                selectedDifficulty === diff
-                  ? "bg-[var(--color-surface-elevated)] text-[var(--color-accent)] border border-[var(--color-accent)]"
-                  : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
-              }`}
-            >
-              {diff === "all" ? "Semua Level" : diff}
-            </button>
-          ))}
+      {/* Challenges Grid */}
+      {loading ? (
+        <div className="text-center py-12 text-xs text-[var(--color-text-muted)]">
+          Memuat tantangan CTF dari server...
         </div>
-      </div>
+      ) : filteredChallenges.length === 0 ? (
+        <div className="p-12 text-center rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-xs text-[var(--color-text-muted)] space-y-2">
+          <Flag className="w-8 h-8 mx-auto text-[var(--color-border)]" />
+          <div>Tidak ada tantangan yang cocok dengan kriteria filter yang dipilih.</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredChallenges.map((ch) => {
+            const feedback = submitFeedback[ch.id];
+            const isSubmitting = submitting[ch.id] || false;
+            const isHintOpen = revealedHints[ch.id] || false;
 
-      {/* Challenges List */}
-      <div className="space-y-6">
-        {filteredChallenges.map((challenge) => {
-          const isSolved = solvedIds.includes(challenge.id);
-          const feedback = submissionFeedback[challenge.id];
-          const hintRevealed = revealedHints[challenge.id];
-          const solutionRevealed = revealedSolutions[challenge.id];
-
-          return (
-            <Card
-              key={challenge.id}
-              className={`transition-all ${
-                isSolved ? "border-emerald-800/80 bg-emerald-950/10" : ""
-              }`}
-            >
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded flex items-center justify-center font-mono text-xs font-bold ${
-                      isSolved
-                        ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
-                        : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
-                    }`}
-                  >
-                    {isSolved ? <CheckCircle2 className="w-4 h-4" /> : <Flag className="w-4 h-4" />}
+            return (
+              <Card
+                key={ch.id}
+                className={`border transition-all flex flex-col justify-between ${
+                  ch.isSolved
+                    ? "bg-emerald-500/5 border-emerald-500/40"
+                    : "border-[var(--color-border)]"
+                }`}
+              >
+                <CardHeader className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[var(--color-accent)]">
+                      {ch.category}
+                    </span>
+                    <Badge variant={ch.isSolved ? "success" : "default"} size="sm">
+                      {ch.isSolved ? "TERPECAHKAN" : ch.difficulty}
+                    </Badge>
                   </div>
-                  <div>
-                    <h3 className="font-mono text-base font-bold text-[var(--color-text)] flex items-center gap-2">
-                      <span>{challenge.title}</span>
-                      {isSolved && (
-                        <Badge variant="success" size="sm">
-                          Solved
-                        </Badge>
-                      )}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[11px] font-mono text-[var(--color-text-muted)] uppercase">
-                        {challenge.category}
-                      </span>
-                      <span className="text-[var(--color-text-muted)]">·</span>
-                      <Badge
-                        variant={challenge.difficulty === "beginner" ? "default" : "warning"}
-                        size="sm"
+                  <h3 className="font-bold text-base text-[var(--color-text)]">
+                    {ch.title}
+                  </h3>
+                  <div className="text-xs text-[var(--color-text-muted)] flex items-center justify-between pt-1">
+                    <span className="text-amber-400 font-bold">+{ch.points} PTS</span>
+                    <span>{ch.solves_count} Solves</span>
+                  </div>
+                </CardHeader>
+
+                <CardBody className="space-y-4 text-xs flex-1 flex flex-col justify-between">
+                  <p className="text-[var(--color-text-secondary)] leading-relaxed">
+                    {ch.description}
+                  </p>
+
+                  {ch.instructions && (
+                    <div className="p-2.5 rounded bg-[var(--color-surface-elevated)] border border-[var(--color-border-subtle)] text-[11px] text-[var(--color-text-muted)]">
+                      <span className="text-[var(--color-accent)] font-bold">Instruksi:</span>{" "}
+                      {ch.instructions}
+                    </div>
+                  )}
+
+                  {/* Hint Toggle */}
+                  {ch.hint && (
+                    <div>
+                      <button
+                        onClick={() => toggleHint(ch.id)}
+                        className="text-[11px] text-[var(--color-accent)] hover:underline flex items-center gap-1"
                       >
-                        {challenge.difficulty}
-                      </Badge>
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        {isHintOpen ? "Sembunyikan Petunjuk" : "Buka Petunjuk (Hint)"}
+                      </button>
+                      {isHintOpen && (
+                        <div className="mt-2 p-2.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px]">
+                          {ch.hint}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
+                  )}
 
-                <div className="font-mono text-sm font-bold text-[var(--color-accent)]">
-                  +{challenge.points} Pts
-                </div>
-              </CardHeader>
-
-              <CardBody className="space-y-4">
-                <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed font-mono">
-                  {challenge.description}
-                </p>
-
-                {/* Flag Submission Form */}
-                <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <input
-                    type="text"
-                    placeholder="Masukkan Flag (Contoh: CYBERLAB{...})"
-                    value={flagInputs[challenge.id] || ""}
-                    onChange={(e) =>
-                      setFlagInputs({ ...flagInputs, [challenge.id]: e.target.value })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleFlagSubmit(challenge);
-                    }}
-                    className="flex-1 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded px-3 py-2 text-xs font-mono text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)]"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => handleFlagSubmit(challenge)}
-                    className="whitespace-nowrap"
-                  >
-                    Submit Flag
-                  </Button>
-                </div>
-
-                {/* Feedback Alert */}
-                {feedback && (
-                  <div
-                    className={`p-3 rounded text-xs font-mono flex items-center gap-2 ${
-                      feedback.status === "correct"
-                        ? "bg-emerald-950/60 text-emerald-300 border border-emerald-800"
-                        : "bg-rose-950/60 text-rose-300 border border-rose-800"
-                    }`}
-                  >
-                    {feedback.status === "correct" ? (
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  {/* Submission Form / Solved state */}
+                  <div className="pt-2 border-t border-[var(--color-border-subtle)] space-y-2">
+                    {ch.isSolved ? (
+                      <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                        <span>Tantangan Terselesaikan (+{ch.points} XP)</span>
+                      </div>
                     ) : (
-                      <XCircle className="w-4 h-4 shrink-0" />
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <Input
+                            value={flagInputs[ch.id] || ""}
+                            onChange={(e) =>
+                              setFlagInputs((prev) => ({ ...prev, [ch.id]: e.target.value }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleFlagSubmit(ch.id);
+                            }}
+                            placeholder="CYBERLAB{flag_rahasia}"
+                            className="font-mono text-xs"
+                          />
+                          <Button
+                            onClick={() => handleFlagSubmit(ch.id)}
+                            disabled={isSubmitting || !flagInputs[ch.id]}
+                            variant="primary"
+                            size="sm"
+                            className="text-xs whitespace-nowrap"
+                          >
+                            {isSubmitting ? "..." : "Submit"}
+                          </Button>
+                        </div>
+
+                        {/* Feedback Banner */}
+                        {feedback && (
+                          <div
+                            className={`p-2.5 rounded border text-[11px] flex items-start gap-2 ${
+                              feedback.success
+                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                : "bg-red-500/10 border-red-500/30 text-red-400"
+                            }`}
+                          >
+                            {feedback.success ? (
+                              <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            ) : (
+                              <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            )}
+                            <div>
+                              <div>{feedback.message}</div>
+                              {feedback.badges && feedback.badges.length > 0 && (
+                                <div className="mt-1 font-bold text-purple-300">
+                                  Lencana Diraih: {feedback.badges.join(", ")}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <span>{feedback.message}</span>
                   </div>
-                )}
-
-                {/* Hint & Solution Accordions */}
-                <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-[var(--color-border-subtle)] text-xs font-mono">
-                  <button
-                    onClick={() =>
-                      setRevealedHints({
-                        ...revealedHints,
-                        [challenge.id]: !hintRevealed,
-                      })
-                    }
-                    className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{hintRevealed ? "Tutup Petunjuk" : "Buka Petunjuk (Hint)"}</span>
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      setRevealedSolutions({
-                        ...revealedSolutions,
-                        [challenge.id]: !solutionRevealed,
-                      })
-                    }
-                    className="text-[var(--color-text-muted)] hover:text-[var(--color-accent)] inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <Unlock className="w-3.5 h-3.5 text-sky-400" />
-                    <span>{solutionRevealed ? "Tutup Pembahasan" : "Buka Solusi Pembelajaran"}</span>
-                  </button>
-                </div>
-
-                {/* Revealed Hint Content */}
-                {hintRevealed && (
-                  <div className="p-3 rounded bg-amber-950/20 border border-amber-900/50 text-xs font-mono text-amber-300">
-                    💡 <strong>Petunjuk:</strong> {challenge.hint}
-                  </div>
-                )}
-
-                {/* Revealed Solution Content */}
-                {solutionRevealed && (
-                  <div className="p-3.5 rounded bg-[var(--color-surface-elevated)]/60 border border-[var(--color-border)] text-xs font-mono space-y-1.5">
-                    <div className="text-[var(--color-accent)] font-bold flex items-center gap-1.5">
-                      <KeyRound className="w-3.5 h-3.5" />
-                      <span>Pembahasan Lengkap:</span>
-                    </div>
-                    <p className="text-slate-300 leading-relaxed">{challenge.solution}</p>
-                    <div className="text-[11px] text-[var(--color-text-muted)] pt-1">
-                      Flag Resmi: <code>{challenge.flag}</code>
-                    </div>
-                  </div>
-                )}
-              </CardBody>
-            </Card>
-          );
-        })}
-      </div>
+                </CardBody>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

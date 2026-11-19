@@ -75,6 +75,22 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  href="/community"
+                  className="hover:text-[var(--color-accent)] transition-colors"
+                >
+                  {(t.nav as any).community || "Komunitas"}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/leaderboard"
+                  className="hover:text-[var(--color-accent)] transition-colors"
+                >
+                  {(t.nav as any).leaderboard || "Papan Peringkat"}
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/progress"
                   className="hover:text-[var(--color-accent)] transition-colors"
                 >
