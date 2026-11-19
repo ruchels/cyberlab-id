@@ -13,7 +13,7 @@ Only the latest stable release receives security updates. Users are encouraged t
 
 If you discover a security vulnerability in this project, please report it responsibly via email:
 
-**Email:** [security@cyberlab-id.example.com](mailto:security@cyberlab-id.example.com)
+**Email:** [ruchelafwa@gmail.com](mailto:ruchelafwa@gmail.com)
 
 When reporting, please include:
 
