@@ -130,6 +130,16 @@ export function Footer() {
                   Pusat Kontributor
                 </Link>
               </li>
+              <li>
+                <Link href="/partnerships" className="hover:text-[var(--color-accent)] transition-colors">
+                  Kemitraan Global & Kampus
+                </Link>
+              </li>
+              <li>
+                <Link href="/knowledge-explorer" className="hover:text-[var(--color-accent)] transition-colors">
+                  Knowledge Explorer (MITRE / CVE)
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -139,6 +149,11 @@ export function Footer() {
               Open-Source & Verifikasi
             </h4>
             <ul className="space-y-2 font-mono text-xs">
+              <li>
+                <Link href="/developers" className="hover:text-[var(--color-accent)] transition-colors">
+                  Developer Portal & API v1
+                </Link>
+              </li>
               <li>
                 <Link href="/opensource" className="hover:text-[var(--color-accent)] transition-colors">
                   Repositori & Kode Etik

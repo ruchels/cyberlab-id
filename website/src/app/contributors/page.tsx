@@ -35,8 +35,11 @@ interface Submission {
 export default function ContributorsPage() {
   const [published, setPublished] = useState<Submission[]>([]);
   const [mySubmissions, setMySubmissions] = useState<Submission[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [prInputModal, setPrInputModal] = useState<{ taskId: string; title: string } | null>(null);
+  const [prUrl, setPrUrl] = useState("");
 
   // Form states
   const [subType, setSubType] = useState("module");
@@ -49,7 +52,63 @@ export default function ContributorsPage() {
 
   useEffect(() => {
     fetchContributions();
+    fetchTasks();
   }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const res = await fetch("/api/contributors/tasks");
+      if (res.ok) {
+        const json = await res.json();
+        setTasks(json.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleClaimTask = async (taskId: string) => {
+    try {
+      const res = await fetch("/api/contributors/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "claim", taskId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        fetchTasks();
+      } else {
+        alert(data.error || "Gagal mengklaim tugas.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSubmitPr = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!prInputModal || !prUrl.trim()) return;
+
+    try {
+      const res = await fetch("/api/contributors/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "submit_pr", taskId: prInputModal.taskId, prUrl: prUrl.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        setPrInputModal(null);
+        setPrUrl("");
+        fetchTasks();
+      } else {
+        alert(data.error || "Gagal mengirimkan PR.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchContributions = async () => {
     try {
@@ -207,6 +266,167 @@ export default function ContributorsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Phase 8: Open Contribution Tasks Board */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-mono text-lg font-bold flex items-center gap-2 text-white">
+                <GitPullRequest className="w-5 h-5 text-[var(--color-accent)]" />
+                <span>Papan Tugas Kontribusi Terbuka</span>
+              </h3>
+              <p className="text-xs text-[var(--color-text-muted)] font-mono mt-0.5">
+                Pilih tugas pengembangan fitur, perbaikan bug, atau penerjemahan kurikulum untuk mendapatkan poin XP dan lencana kontributor.
+              </p>
+            </div>
+            <a
+              href="https://github.com/CyberLab-ID/cyberlab-id/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-mono text-cyan-400 hover:underline inline-flex items-center gap-1"
+            >
+              GitHub Issues <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {tasks.map((task) => (
+              <Card
+                key={task.id}
+                className="bg-[#0d121f] border-[var(--color-border)] p-5 flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-[var(--color-surface-elevated)] text-[var(--color-accent)] border border-[var(--color-border)]">
+                      {task.category}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-amber-400 font-bold">+{task.reward_xp} XP</span>
+                      <Badge
+                        variant={
+                          task.status === "open"
+                            ? "accent"
+                            : task.status === "in_review"
+                            ? "secondary"
+                            : task.status === "completed"
+                            ? "outline"
+                            : "secondary"
+                        }
+                        size="sm"
+                      >
+                        {task.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <h4 className="font-bold text-sm text-[var(--color-text)]">{task.title}</h4>
+                  <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">{task.description}</p>
+
+                  {task.requirements && task.requirements.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-[10px] font-mono text-[var(--color-text-muted)] uppercase block mb-1">
+                        Persyaratan Keahlian:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {task.requirements.map((req: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-zinc-300"
+                          >
+                            • {req}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-[var(--color-border-subtle)] flex items-center justify-between text-xs">
+                  <div className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                    {task.assignee_name ? (
+                      <span>Dikerjakan oleh: <strong className="text-cyan-400">{task.assignee_name}</strong></span>
+                    ) : (
+                      <span className="text-emerald-400 font-bold">✓ Tersedia untuk Diambil</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {task.issue_url && (
+                      <a
+                        href={task.issue_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-mono text-cyan-400 hover:underline inline-flex items-center gap-1"
+                      >
+                        Issue #{task.id.slice(-3)} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    {task.status === "open" && (
+                      <button
+                        onClick={() => handleClaimTask(task.id)}
+                        className="px-3 py-1 rounded bg-[var(--color-accent)] text-black font-mono font-bold text-xs hover:opacity-90"
+                      >
+                        Ambil Tugas
+                      </button>
+                    )}
+                    {task.status === "assigned" && (
+                      <button
+                        onClick={() => setPrInputModal({ taskId: task.id, title: task.title })}
+                        className="px-3 py-1 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono text-xs hover:bg-indigo-500/30"
+                      >
+                        Submit PR Link
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* PR Submission Modal */}
+        {prInputModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4">
+              <h3 className="text-sm font-bold text-[var(--color-text)] font-mono">
+                Submit Pull Request GitHub
+              </h3>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Tugas: <strong>{prInputModal.title}</strong>
+              </p>
+              <form onSubmit={handleSubmitPr} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-mono text-[var(--color-text-secondary)] mb-1">
+                    Tautan PR GitHub Resmi *
+                  </label>
+                  <input
+                    type="url"
+                    value={prUrl}
+                    onChange={(e) => setPrUrl(e.target.value)}
+                    placeholder="https://github.com/CyberLab-ID/cyberlab-id/pull/..."
+                    required
+                    className="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded px-3 py-2 text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setPrInputModal(null)}
+                    className="px-3 py-1.5 rounded text-xs font-mono text-[var(--color-text-muted)] hover:text-white"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded bg-[var(--color-accent)] text-black font-mono font-bold text-xs"
+                  >
+                    Kirim untuk Review
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

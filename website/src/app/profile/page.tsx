@@ -23,6 +23,10 @@ import {
   AlertCircle,
   Clock,
   ArrowRight,
+  Download,
+  Trash2,
+  Code,
+  Languages,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -54,6 +58,88 @@ export default function ProfilePage() {
   const [newPass, setNewPass] = useState("");
   const [passError, setPassError] = useState<string | null>(null);
   const [passSuccess, setPassSuccess] = useState(false);
+
+  // Phase 8: Regional Preferences & Privacy Compliance
+  const [prefLang, setPrefLang] = useState("id");
+  const [prefTz, setPrefTz] = useState("Asia/Jakarta");
+  const [githubUser, setGithubUser] = useState("");
+  const [savingPref, setSavingPref] = useState(false);
+  const [prefSaved, setPrefSaved] = useState(false);
+
+  // Phase 8: Account Deletion Modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePass, setDeletePass] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (user) {
+      fetch("/api/user/preferences")
+        .then((r) => r.json())
+        .then((json) => {
+          if (json.success && json.data) {
+            setPrefLang(json.data.preferredLanguage || "id");
+            setPrefTz(json.data.preferredTimezone || "Asia/Jakarta");
+            setGithubUser(json.data.githubUsername || "");
+          }
+        })
+        .catch(console.error);
+    }
+  }, [user]);
+
+  const handleSavePreferences = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPref(true);
+    setPrefSaved(false);
+    try {
+      const res = await fetch("/api/user/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preferredLanguage: prefLang,
+          preferredTimezone: prefTz,
+          githubUsername: githubUser,
+        }),
+      });
+      if (res.ok) {
+        setPrefSaved(true);
+        setTimeout(() => setPrefSaved(false), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingPref(false);
+    }
+  };
+
+  const handleExportData = () => {
+    window.location.href = "/api/user/export-data";
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDeleteError(null);
+    setDeletingAccount(true);
+    try {
+      const res = await fetch("/api/user/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePass, confirmText: deleteConfirmText }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Akun Anda telah berhasil dihapus. Sampai jumpa.");
+        window.location.href = "/";
+      } else {
+        setDeleteError(data.error || "Gagal menghapus akun.");
+      }
+    } catch (err: any) {
+      setDeleteError(err.message);
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -309,6 +395,143 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* Phase 8: Regional Preferences & Developer Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-[var(--color-surface)] border-[var(--color-border)] p-6 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2 font-mono">
+              <Globe className="w-4 h-4 text-cyan-400" />
+              Preferensi Regional & Internasional
+            </h3>
+            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+              Atur bahasa antarmuka bawaan dan zona waktu lokal untuk kalender turnamen CTF.
+            </p>
+          </div>
+
+          {prefSaved && (
+            <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
+              ✓ Preferensi regional berhasil disimpan!
+            </div>
+          )}
+
+          <form onSubmit={handleSavePreferences} className="space-y-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                  Bahasa Antarmuka
+                </label>
+                <select
+                  value={prefLang}
+                  onChange={(e) => setPrefLang(e.target.value)}
+                  className="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded px-3 py-2 text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+                >
+                  <option value="id">Bahasa Indonesia (ID)</option>
+                  <option value="en">English (Global)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                  Zona Waktu (Timezone)
+                </label>
+                <select
+                  value={prefTz}
+                  onChange={(e) => setPrefTz(e.target.value)}
+                  className="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded px-3 py-2 text-xs text-[var(--color-text)] outline-none focus:border-[var(--color-accent)] font-mono"
+                >
+                  <option value="Asia/Jakarta">WIB (Asia/Jakarta, UTC+7)</option>
+                  <option value="Asia/Makassar">WITA (Asia/Makassar, UTC+8)</option>
+                  <option value="Asia/Jayapura">WIT (Asia/Jayapura, UTC+9)</option>
+                  <option value="Asia/Singapore">SGT (Asia/Singapore, UTC+8)</option>
+                  <option value="UTC">UTC (Universal Coordinated Time)</option>
+                  <option value="Europe/London">GMT / BST (London, UTC+0/+1)</option>
+                  <option value="America/New_York">EST / EDT (New York, UTC-5/-4)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                Username Profil GitHub
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-[var(--color-text-muted)] font-mono">@</span>
+                <Input
+                  value={githubUser}
+                  onChange={(e) => setGithubUser(e.target.value)}
+                  placeholder="username_github_anda"
+                  className="pl-7 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button type="submit" variant="primary" size="sm" disabled={savingPref}>
+                {savingPref ? "Menyimpan..." : "Simpan Preferensi"}
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        {/* Phase 8: Data Privacy Compliance & Developer Portal */}
+        <Card className="bg-[var(--color-surface)] border-[var(--color-border)] p-6 space-y-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2 font-mono">
+              <Shield className="w-4 h-4 text-[var(--color-accent)]" />
+              Privasi Data & Portabilitas Akun (GDPR)
+            </h3>
+            <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+              Anda memiliki kendali penuh atas data pribadi Anda. Anda dapat mengunduh salinan berkas data akun terkompresi atau menghapus akun secara permanen.
+            </p>
+
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border-subtle)] text-xs">
+                <div>
+                  <div className="font-bold text-[var(--color-text)]">Portabilitas Data Akun</div>
+                  <div className="text-[11px] text-[var(--color-text-muted)]">
+                    Unduh riwayat progres, XP, lencana, dan submission dalam format JSON.
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleExportData}>
+                  <Download className="w-3.5 h-3.5 mr-1" />
+                  Ekspor JSON
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs">
+                <div>
+                  <div className="font-bold text-rose-400">Hapus Akun Permanen</div>
+                  <div className="text-[11px] text-rose-300/80">
+                    Hapus permanen akun, riwayat tantangan, dan data profil tanpa bisa dipulihkan.
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="border-rose-500/50 text-rose-400 hover:bg-rose-500/20"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Hapus Akun
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-[var(--color-border-subtle)] flex items-center justify-between text-xs">
+            <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+              Developer Ecosystem
+            </span>
+            <Link
+              href="/developers"
+              className="text-xs font-mono text-cyan-400 hover:underline inline-flex items-center gap-1 font-bold"
+            >
+              <Code className="w-3.5 h-3.5" /> Kelola Developer API Key &rarr;
+            </Link>
+          </div>
+        </Card>
+      </div>
+
       {/* Edit Profile Modal */}
       {isEditing && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -465,6 +688,86 @@ export default function ProfilePage() {
                 </Button>
                 <Button type="submit" variant="primary" size="sm">
                   Perbarui Sandi
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 8: Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[var(--color-surface)] border border-rose-500/40 p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-[var(--color-border-subtle)] pb-3">
+              <h3 className="font-bold text-sm text-rose-400 flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                Konfirmasi Penghapusan Akun Permanen
+              </h3>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text)] text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-rose-200/90 leading-relaxed">
+              Tindakan ini <strong>tidak dapat dibatalkan</strong>. Seluruh riwayat XP, pemecahan flag CTF, praktikum cyber range, dan data akun Anda akan dihapus secara permanen dari server CyberLab-ID.
+            </p>
+
+            {deleteError && (
+              <div className="p-2.5 rounded bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-mono">
+                {deleteError}
+              </div>
+            )}
+
+            <form onSubmit={handleDeleteAccount} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                  Masukkan Kata Sandi Anda *
+                </label>
+                <Input
+                  type="password"
+                  required
+                  value={deletePass}
+                  onChange={(e) => setDeletePass(e.target.value)}
+                  placeholder="••••••••"
+                  className="font-mono text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                  Ketik persis: <span className="text-rose-400 font-bold select-all">DELETE MY ACCOUNT</span> *
+                </label>
+                <Input
+                  type="text"
+                  required
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE MY ACCOUNT"
+                  className="font-mono text-xs text-rose-400"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border-subtle)]">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  disabled={deletingAccount || deleteConfirmText !== "DELETE MY ACCOUNT"}
+                  className="bg-rose-600 hover:bg-rose-500 text-white"
+                >
+                  {deletingAccount ? "Menghapus..." : "Hapus Akun Selamanya"}
                 </Button>
               </div>
             </form>

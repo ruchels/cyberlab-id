@@ -32,6 +32,7 @@ import {
   Sparkles,
   Bot,
   ShieldAlert,
+  Code,
 } from "lucide-react";
 import { GithubIcon, Badge } from "@/components/ui";
 
@@ -57,6 +58,9 @@ export function Navbar() {
   ];
 
   const ecosystemItems = [
+    { href: "/partnerships", label: "Mitra Global", icon: Globe },
+    { href: "/knowledge-explorer", label: "Knowledge Explorer", icon: Compass },
+    { href: "/developers", label: "Developer API", icon: Code },
     { href: "/learning/ai-path", label: "AI Learning Path", icon: Sparkles },
     { href: "/quizzes", label: "Kuis AI", icon: Award },
     { href: "/contributors", label: "Kontributor", icon: GitPullRequest },

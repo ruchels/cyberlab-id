@@ -30,10 +30,12 @@ import {
   Brain,
   BookOpen,
   HelpCircle,
+  Globe,
+  Key,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
-type AdminTab = "analytics" | "users" | "ctf" | "range" | "moderation" | "audit" | "readiness" | "ecosystem" | "ai";
+type AdminTab = "analytics" | "users" | "ctf" | "range" | "moderation" | "audit" | "readiness" | "ecosystem" | "ai" | "global";
 
 export default function AdminDashboardPage() {
   const { user, isLoading } = useAuth();
@@ -299,6 +301,84 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Phase 8: Global Ecosystem & Integrations State
+  const [globalData, setGlobalData] = useState<any>(null);
+  const [globalLoading, setGlobalLoading] = useState(false);
+  const [globalActionMsg, setGlobalActionMsg] = useState<string | null>(null);
+
+  const fetchGlobalAdmin = async () => {
+    try {
+      setGlobalLoading(true);
+      const res = await fetch("/api/admin/global");
+      if (res.ok) {
+        const json = await res.json();
+        setGlobalData(json.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  const handleReviewPartnership = async (applicationId: string, status: "approved" | "rejected") => {
+    try {
+      const res = await fetch("/api/admin/global", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "review_partnership", applicationId, status }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGlobalActionMsg(`Pengajuan kemitraan berhasil di-${status}!`);
+        fetchGlobalAdmin();
+        setTimeout(() => setGlobalActionMsg(null), 4000);
+      } else {
+        alert(data.error || "Gagal memproses review kemitraan.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReviewTask = async (taskId: string, status: "completed" | "open") => {
+    try {
+      const res = await fetch("/api/admin/global", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "review_task", taskId, status }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGlobalActionMsg(`Tugas kontribusi berhasil diperbarui (${status}).`);
+        fetchGlobalAdmin();
+        setTimeout(() => setGlobalActionMsg(null), 4000);
+      } else {
+        alert(data.error || "Gagal memproses tugas.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleAdminRevokeKey = async (keyId: string) => {
+    if (!confirm("Cabut paksa Developer API Key ini? Pengguna tidak akan dapat mengakses endpoint publik lagi.")) return;
+    try {
+      const res = await fetch("/api/admin/global", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "admin_revoke_key", keyId }),
+      });
+      if (res.ok) {
+        setGlobalActionMsg("API Key berhasil dicabut secara administratif.");
+        fetchGlobalAdmin();
+        setTimeout(() => setGlobalActionMsg(null), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchAnalytics = async () => {
     try {
       const res = await fetch("/api/admin/analytics");
@@ -386,6 +466,7 @@ export default function AdminDashboardPage() {
       if (activeTab === "readiness") fetchReadiness();
       if (activeTab === "ecosystem") fetchEcosystem();
       if (activeTab === "ai") fetchAiAdmin();
+      if (activeTab === "global") fetchGlobalAdmin();
     }
   }, [user, activeTab]);
 
@@ -510,93 +591,93 @@ export default function AdminDashboardPage() {
         <div className="flex flex-wrap items-center gap-1.5 bg-[var(--color-surface)] p-1 rounded-xl border border-[var(--color-border)] text-xs">
           <button
             onClick={() => setActiveTab("analytics")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "analytics"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "analytics"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <BarChart3 className="w-3.5 h-3.5" /> Analitik
           </button>
           <button
             onClick={() => setActiveTab("users")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "users"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "users"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <Users className="w-3.5 h-3.5" /> Pengguna
           </button>
           <button
             onClick={() => setActiveTab("ctf")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "ctf"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "ctf"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <Flag className="w-3.5 h-3.5" /> Tantangan CTF
           </button>
           <button
             onClick={() => setActiveTab("range")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "range"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "range"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <Activity className="w-3.5 h-3.5" /> Cyber Range
           </button>
           <button
             onClick={() => setActiveTab("moderation")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "moderation"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "moderation"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" /> Moderasi
           </button>
           <button
             onClick={() => setActiveTab("audit")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "audit"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "audit"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <FileText className="w-3.5 h-3.5" /> Audit Log
           </button>
           <button
             onClick={() => setActiveTab("readiness")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "readiness"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "readiness"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" /> Production Readiness
           </button>
           <button
             onClick={() => setActiveTab("ecosystem")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "ecosystem"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "ecosystem"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <GitPullRequest className="w-3.5 h-3.5" /> Ekosistem & Riset
           </button>
           <button
             onClick={() => setActiveTab("ai")}
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-              activeTab === "ai"
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "ai"
                 ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
                 : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
+              }`}
           >
             <Bot className="w-3.5 h-3.5" /> AI Engine & Data
+          </button>
+          <button
+            onClick={() => setActiveTab("global")}
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === "global"
+                ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              }`}
+          >
+            <Globe className="w-3.5 h-3.5" /> Global & Integrasi
           </button>
         </div>
       </div>
@@ -756,11 +837,10 @@ export default function AdminDashboardPage() {
                               disabled={updatingUser === u.id}
                               variant="outline"
                               size="sm"
-                              className={`text-[11px] ${
-                                u.status === "active"
+                              className={`text-[11px] ${u.status === "active"
                                   ? "text-red-400 border-red-500/30 hover:bg-red-500/10"
                                   : "text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
-                              }`}
+                                }`}
                             >
                               {u.status === "active" ? "Nonaktifkan" : "Aktifkan"}
                             </Button>
@@ -1013,8 +1093,8 @@ export default function AdminDashboardPage() {
                               s.status === "running"
                                 ? "accent"
                                 : s.status === "completed"
-                                ? "success"
-                                : "default"
+                                  ? "success"
+                                  : "default"
                             }
                             size="sm"
                           >
@@ -1804,11 +1884,10 @@ export default function AdminDashboardPage() {
                               <td className="py-2.5 px-3 text-center">
                                 <button
                                   onClick={() => handleToggleDocIndex(doc.id, doc.is_indexed)}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                                    doc.is_indexed
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${doc.is_indexed
                                       ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
                                       : "bg-zinc-500/20 text-zinc-400 hover:bg-zinc-500/30"
-                                  }`}
+                                    }`}
                                 >
                                   {doc.is_indexed ? "✓ Terindeks" : "Nonaktif"}
                                 </button>
@@ -1906,6 +1985,339 @@ export default function AdminDashboardPage() {
                             </tr>
                           ))
                         )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Tab 10: Global Ecosystem, Partnerships & External Integrations */}
+      {activeTab === "global" && (
+        <div className="space-y-6">
+          {globalActionMsg && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-xs font-mono">
+              ✓ {globalActionMsg}
+            </div>
+          )}
+
+          {globalLoading && !globalData ? (
+            <div className="text-center py-12 text-[var(--color-text-muted)] text-sm">
+              Memuat data kemitraan global, tugas kontribusi, dan API keys...
+            </div>
+          ) : globalData ? (
+            <div className="space-y-8">
+              {/* Summary KPIs */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Aplikasi Kemitraan</div>
+                  <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">
+                    {globalData.applications?.filter((a: any) => a.status === "pending").length || 0}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    {globalData.partners?.length || 0} Mitra Terverifikasi
+                  </div>
+                </Card>
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Tugas Kontribusi</div>
+                  <div className="text-2xl font-bold font-mono text-amber-400 mt-1">
+                    {globalData.tasks?.length || 0}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    {globalData.tasks?.filter((t: any) => t.status === "in_review").length || 0} PR Menunggu Review
+                  </div>
+                </Card>
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Developer API Keys</div>
+                  <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">
+                    {globalData.apiKeys?.filter((k: any) => !k.is_revoked).length || 0}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    Total {globalData.apiKeys?.reduce((acc: number, k: any) => acc + (k.total_requests || 0), 0) || 0} Permintaan
+                  </div>
+                </Card>
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Knowledge Integrasi</div>
+                  <div className="text-2xl font-bold font-mono text-indigo-400 mt-1">
+                    {globalData.cacheSummary?.reduce((acc: number, c: any) => acc + (c.count || 0), 0) || 0}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    MITRE, NIST, OWASP, CVE
+                  </div>
+                </Card>
+              </div>
+
+              {/* 1. Partnership Applications Review Queue */}
+              <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
+                <CardHeader className="pb-3 border-b border-[var(--color-border-subtle)]">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-5 h-5 text-cyan-400" />
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--color-text)]">
+                        Antrean Pengajuan Kemitraan Komunitas & Institusi ({globalData.applications?.length || 0})
+                      </h3>
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Tinjau verifikasi resmi perguruan tinggi, SMK vokasi, dan komunitas siber sebelum ditayangkan di /partnerships.
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] font-mono border-b border-[var(--color-border-subtle)]">
+                        <tr>
+                          <th className="py-2.5 px-3">Organisasi</th>
+                          <th className="py-2.5 px-3">Tipe / Negara</th>
+                          <th className="py-2.5 px-3">Narahubung</th>
+                          <th className="py-2.5 px-3">Proposal Kolaborasi</th>
+                          <th className="py-2.5 px-3 text-center">Status</th>
+                          <th className="py-2.5 px-3 text-right">Aksi Review</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {globalData.applications?.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-[var(--color-text-muted)]">
+                              Tidak ada pengajuan kemitraan baru.
+                            </td>
+                          </tr>
+                        ) : (
+                          globalData.applications?.map((app: any) => (
+                            <tr key={app.id} className="hover:bg-white/[0.01]">
+                              <td className="py-2.5 px-3 font-semibold text-[var(--color-text)]">
+                                <div>{app.org_name}</div>
+                                <a
+                                  href={app.website_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-cyan-400 hover:underline font-mono"
+                                >
+                                  {app.website_url}
+                                </a>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className="uppercase text-[10px] font-mono text-[var(--color-text-muted)]">
+                                  {app.org_type} ({app.country})
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-[11px]">
+                                <div>{app.contact_name}</div>
+                                <div className="text-[var(--color-text-muted)] font-mono text-[10px]">{app.contact_email}</div>
+                              </td>
+                              <td className="py-2.5 px-3 max-w-xs truncate text-[11px] text-[var(--color-text-secondary)]">
+                                {app.proposed_collaboration}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <Badge
+                                  variant={
+                                    app.status === "approved"
+                                      ? "accent"
+                                      : app.status === "rejected"
+                                        ? "destructive"
+                                        : "secondary"
+                                  }
+                                  size="sm"
+                                >
+                                  {app.status}
+                                </Badge>
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                {app.status === "pending" || app.status === "under_review" ? (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      onClick={() => handleReviewPartnership(app.id, "approved")}
+                                      className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/30"
+                                    >
+                                      Setujui
+                                    </button>
+                                    <button
+                                      onClick={() => handleReviewPartnership(app.id, "rejected")}
+                                      className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold hover:bg-rose-500/30"
+                                    >
+                                      Tolak
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-mono">
+                                    Selesai
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* 2. Contributor Tasks & PR Review Queue */}
+              <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
+                <CardHeader className="pb-3 border-b border-[var(--color-border-subtle)]">
+                  <div className="flex items-center gap-2">
+                    <GitPullRequest className="w-5 h-5 text-amber-400" />
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--color-text)]">
+                        Manajemen Tugas Open Source & Review Pull Request ({globalData.tasks?.length || 0})
+                      </h3>
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Verifikasi pengajuan Pull Request kontributor komunitas dan berikan reward poin XP setelah disetujui.
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] font-mono border-b border-[var(--color-border-subtle)]">
+                        <tr>
+                          <th className="py-2.5 px-3">Judul Tugas</th>
+                          <th className="py-2.5 px-3">Kategori</th>
+                          <th className="py-2.5 px-3">Pengerja</th>
+                          <th className="py-2.5 px-3">Tautan PR</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Aksi Review</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {globalData.tasks?.map((task: any) => (
+                          <tr key={task.id} className="hover:bg-white/[0.01]">
+                            <td className="py-2.5 px-3 font-semibold text-[var(--color-text)]">
+                              <div>{task.title}</div>
+                              <span className="text-[10px] font-mono text-amber-400">+{task.reward_xp} XP</span>
+                            </td>
+                            <td className="py-2.5 px-3 uppercase text-[10px] font-mono text-cyan-400">
+                              {task.category}
+                            </td>
+                            <td className="py-2.5 px-3 text-[11px]">
+                              {task.assignee_name ? (
+                                <div>
+                                  <span className="font-bold">{task.assignee_name}</span>
+                                  <span className="text-[10px] font-mono text-[var(--color-text-muted)] block">
+                                    @{task.assignee_username}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-[var(--color-text-muted)]">Belum diklaim</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px]">
+                              {task.pr_url ? (
+                                <a
+                                  href={task.pr_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+                                >
+                                  Lihat PR <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <span className="text-[10px] text-[var(--color-text-muted)]">-</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <Badge
+                                variant={
+                                  task.status === "completed"
+                                    ? "accent"
+                                    : task.status === "in_review"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                                size="sm"
+                              >
+                                {task.status}
+                              </Badge>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {task.status === "in_review" ? (
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => handleReviewTask(task.id, "completed")}
+                                    className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/30"
+                                  >
+                                    Terima & Beri XP
+                                  </button>
+                                  <button
+                                    onClick={() => handleReviewTask(task.id, "open")}
+                                    className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold hover:bg-rose-500/30"
+                                  >
+                                    Minta Revisi
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-mono">
+                                  {task.status}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* 3. Developer API Keys Audit */}
+              <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
+                <CardHeader className="pb-3 border-b border-[var(--color-border-subtle)]">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--color-text)]">
+                        Pengawasan Developer Public API Keys ({globalData.apiKeys?.length || 0})
+                      </h3>
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Pantau pemanggilan API eksternal dan cabut akses kunci jika terdeteksi penyalahgunaan.
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] font-mono border-b border-[var(--color-border-subtle)]">
+                        <tr>
+                          <th className="py-2.5 px-3">Nama Key</th>
+                          <th className="py-2.5 px-3">Pemilik</th>
+                          <th className="py-2.5 px-3">Prefix Token</th>
+                          <th className="py-2.5 px-3">Total Reqs</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Aksi Admin</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {globalData.apiKeys?.map((k: any) => (
+                          <tr key={k.id} className="hover:bg-white/[0.01]">
+                            <td className="py-2.5 px-3 font-semibold text-[var(--color-text)]">{k.key_name}</td>
+                            <td className="py-2.5 px-3 text-[11px]">
+                              {k.display_name} (@{k.username})
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[var(--color-accent)]">{k.key_prefix}</td>
+                            <td className="py-2.5 px-3 font-mono">{k.total_requests}</td>
+                            <td className="py-2.5 px-3">
+                              <Badge variant={k.is_revoked ? "destructive" : "accent"} size="sm">
+                                {k.is_revoked ? "Revoked" : "Active"}
+                              </Badge>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {!k.is_revoked && (
+                                <button
+                                  onClick={() => handleAdminRevokeKey(k.id)}
+                                  className="text-rose-400 hover:text-rose-300 font-mono text-[10px]"
+                                >
+                                  Cabut Paksa
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>

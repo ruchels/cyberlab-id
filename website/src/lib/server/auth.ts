@@ -116,3 +116,4 @@ export async function requireAdmin(request?: Request): Promise<User> {
 }
 
 export { logAudit, createNotification } from "./db.ts";
+export const getCurrentUser = getSessionUser;

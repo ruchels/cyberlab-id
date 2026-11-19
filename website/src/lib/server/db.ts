@@ -515,7 +515,126 @@ function initSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_ai_knowledge_cat ON ai_knowledge_docs(category, is_enabled);
     CREATE INDEX IF NOT EXISTS idx_ai_quiz_drafts_status ON ai_quiz_drafts(status, category);
     CREATE INDEX IF NOT EXISTS idx_ai_security_analyses_user ON ai_security_analyses(user_id, created_at DESC);
+
+    -- Phase 8: Global Ecosystem, Partnerships, Tasks, API Keys, Knowledge Cache & Groups
+    CREATE TABLE IF NOT EXISTS partnerships (
+      id TEXT PRIMARY KEY,
+      organization_name TEXT NOT NULL,
+      org_type TEXT NOT NULL, -- 'university' | 'vocational_school' | 'community' | 'research_org' | 'tech_edu' | 'open_source' | 'event_organizer'
+      country TEXT NOT NULL DEFAULT 'ID',
+      city TEXT NOT NULL DEFAULT '',
+      website_url TEXT NOT NULL DEFAULT '',
+      logo_url TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'approved', -- 'pending' | 'under_review' | 'approved' | 'rejected'
+      contact_name TEXT NOT NULL DEFAULT '',
+      contact_email TEXT NOT NULL DEFAULT '',
+      is_contact_public INTEGER NOT NULL DEFAULT 0,
+      collaboration_categories TEXT NOT NULL DEFAULT '[]', -- JSON array
+      partnership_agreement_ref TEXT NOT NULL DEFAULT '',
+      verified_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS partnership_applications (
+      id TEXT PRIMARY KEY,
+      applicant_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      org_name TEXT NOT NULL,
+      org_type TEXT NOT NULL,
+      country TEXT NOT NULL,
+      website_url TEXT NOT NULL,
+      contact_name TEXT NOT NULL,
+      contact_email TEXT NOT NULL,
+      proposed_collaboration TEXT NOT NULL,
+      supporting_links TEXT NOT NULL DEFAULT '[]', -- JSON array
+      status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'under_review' | 'approved' | 'rejected'
+      review_notes TEXT NOT NULL DEFAULT '',
+      reviewed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      reviewed_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS contribution_tasks (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL, -- 'docs' | 'module' | 'lab' | 'bug' | 'translation' | 'ui' | 'security' | 'research'
+      difficulty TEXT NOT NULL DEFAULT 'medium', -- 'easy' | 'medium' | 'hard'
+      description TEXT NOT NULL,
+      requirements TEXT NOT NULL DEFAULT '[]', -- JSON array
+      status TEXT NOT NULL DEFAULT 'open', -- 'open' | 'assigned' | 'in_review' | 'completed' | 'closed'
+      issue_url TEXT NOT NULL DEFAULT '',
+      pr_url TEXT NOT NULL DEFAULT '',
+      reward_xp INTEGER NOT NULL DEFAULT 50,
+      assigned_to TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS developer_api_keys (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      key_name TEXT NOT NULL,
+      key_prefix TEXT NOT NULL,
+      key_hash TEXT NOT NULL UNIQUE,
+      scopes TEXT NOT NULL DEFAULT '["read:public"]', -- JSON array
+      rate_limit_per_minute INTEGER NOT NULL DEFAULT 60,
+      total_requests INTEGER NOT NULL DEFAULT 0,
+      last_used_at TEXT,
+      is_revoked INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS external_knowledge_cache (
+      id TEXT PRIMARY KEY,
+      source_type TEXT NOT NULL, -- 'mitre_attack' | 'nist_csf' | 'owasp_top10' | 'cve_nvd'
+      reference_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      severity TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high' | 'critical'
+      data_payload TEXT NOT NULL DEFAULT '{}', -- JSON object
+      source_attribution TEXT NOT NULL,
+      cached_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS community_groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      category TEXT NOT NULL, -- 'regional' | 'topic' | 'academic' | 'research'
+      region_or_language TEXT NOT NULL DEFAULT 'Global',
+      description TEXT NOT NULL,
+      member_count INTEGER NOT NULL DEFAULT 0,
+      is_official INTEGER NOT NULL DEFAULT 1,
+      lead_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS certificate_verifications (
+      id TEXT PRIMARY KEY,
+      certificate_id TEXT NOT NULL REFERENCES digital_certificates(id) ON DELETE CASCADE,
+      verifier_ip_hash TEXT NOT NULL,
+      verification_method TEXT NOT NULL DEFAULT 'web_lookup', -- 'web_lookup' | 'qr_scan' | 'api_v1'
+      verified_at TEXT NOT NULL
+    );
+
+    -- Phase 8 Indexes
+    CREATE INDEX IF NOT EXISTS idx_partnerships_status ON partnerships(status, org_type);
+    CREATE INDEX IF NOT EXISTS idx_partnership_apps_status ON partnership_applications(status);
+    CREATE INDEX IF NOT EXISTS idx_contribution_tasks_status ON contribution_tasks(status, category);
+    CREATE INDEX IF NOT EXISTS idx_developer_api_keys_hash ON developer_api_keys(key_hash);
+    CREATE INDEX IF NOT EXISTS idx_developer_api_keys_user ON developer_api_keys(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ext_knowledge_src ON external_knowledge_cache(source_type, reference_id);
+    CREATE INDEX IF NOT EXISTS idx_cert_verifications_cert ON certificate_verifications(certificate_id, verified_at DESC);
   `);
+
+  // Safe migrations for Phase 8 user attributes
+  try { db.exec("ALTER TABLE users ADD COLUMN preferred_language TEXT NOT NULL DEFAULT 'id';"); } catch {}
+  try { db.exec("ALTER TABLE users ADD COLUMN preferred_timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta';"); } catch {}
+  try { db.exec("ALTER TABLE users ADD COLUMN github_username TEXT NOT NULL DEFAULT '';"); } catch {}
 }
 
 function seedInitialData(db: DatabaseSync) {
@@ -987,6 +1106,17 @@ function seedInitialData(db: DatabaseSync) {
     { code: "quiz-champion", title: "Adaptive Quiz Champion", desc: "Selesaikan latihan kuis terpersonalisasi yang dihasilkan oleh AI Quiz Generator.", icon: "Sparkles", cat: "ai", xp: 30 },
   ];
   for (const a of phase7Achievements) {
+    insertPhase6Ach.run(`ach_${a.code}`, a.code, a.title, a.desc, a.icon, a.cat, a.xp);
+  }
+
+  // Phase 8 Achievements
+  const phase8Achievements = [
+    { code: "global-collaborator", title: "Global Collaborator", desc: "Terhubung dan berpartisipasi dalam program kemitraan akademik & komunitas siber internasional.", icon: "Globe", cat: "community", xp: 40 },
+    { code: "open-source-hero", title: "Open Source Contributor Hero", desc: "Selesaikan tugas kontribusi repositori, lokalisasi, atau modul praktikum open-source.", icon: "GitPullRequest", cat: "opensource", xp: 50 },
+    { code: "api-architect", title: "Public API Developer", desc: "Buat Developer API Key dan bangun integrasi otomatisasi dengan Public API CyberLab-ID v1.", icon: "Code", cat: "developer", xp: 30 },
+    { code: "threat-intel-analyst", title: "Threat Intel Investigator", desc: "Jelajahi matriks taktik MITRE ATT&CK, NIST CSF, dan intelijen kerentanan CVE pada Knowledge Explorer.", icon: "Compass", cat: "research", xp: 35 },
+  ];
+  for (const a of phase8Achievements) {
     insertPhase6Ach.run(`ach_${a.code}`, a.code, a.title, a.desc, a.icon, a.cat, a.xp);
   }
 
@@ -1536,6 +1666,403 @@ function seedInitialData(db: DatabaseSync) {
       now,
       now
     );
+  }
+
+  // 15. Seed Phase 8: Institutional & Community Partnerships
+  const checkPartners = db.prepare("SELECT count(*) as count FROM partnerships").get() as { count: number };
+  if (checkPartners.count === 0) {
+    const now = new Date().toISOString();
+    const insertPartner = db.prepare(`
+      INSERT INTO partnerships (
+        id, organization_name, org_type, country, city, website_url, logo_url,
+        description, status, contact_name, contact_email, is_contact_public,
+        collaboration_categories, partnership_agreement_ref, verified_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, 0, ?, ?, ?, ?, ?)
+    `);
+
+    const partners = [
+      {
+        id: "part-ui-csc",
+        name: "Universitas Indonesia - Cyber Security Center",
+        type: "university",
+        country: "ID",
+        city: "Depok",
+        website: "https://csc.ui.ac.id",
+        logo: "GraduationCap",
+        desc: "Kolaborasi riset keamanan siber, pelatihan mahasiswa, dan validasi kurikulum standar pertahanan nasional.",
+        contact: "Dr. Pratama Cyber",
+        email: "csc@ui.ac.id",
+        cats: JSON.stringify(["curriculum", "research", "mentorship"]),
+        ref: "MOU-UI-CYBERLAB-2026-01",
+      },
+      {
+        id: "part-itb-seclab",
+        name: "Institut Teknologi Bandung - Information Security Laboratory",
+        type: "university",
+        country: "ID",
+        city: "Bandung",
+        website: "https://stei.itb.ac.id",
+        logo: "GraduationCap",
+        desc: "Penyusunan modul kriptografi terapan, pengujian perangkat lunak terpercaya, dan turnamen CTF mahasiswa.",
+        contact: "Prof. Ir. Kripto ITB",
+        email: "seclab@stei.itb.ac.id",
+        cats: JSON.stringify(["curriculum", "ctf_events", "cyber_range"]),
+        ref: "MOU-ITB-CYBERLAB-2026-02",
+      },
+      {
+        id: "part-nus-cyber",
+        name: "National University of Singapore - Cybersecurity Research Group",
+        type: "research_org",
+        country: "SG",
+        city: "Singapore",
+        website: "https://nus.edu.sg/soc/research/cybersecurity",
+        logo: "Compass",
+        desc: "Kolaborasi regional Asia Pasifik dalam penelitian pertahanan botnet, analisis PCAP terdistribusi, dan publikasi terbuka.",
+        contact: "Dr. K. Tan",
+        email: "cyber-research@nus.edu.sg",
+        cats: JSON.stringify(["research", "curriculum"]),
+        ref: "MOU-NUS-CYBERLAB-2026-03",
+      },
+      {
+        id: "part-id-networkers",
+        name: "ID-Networkers Community",
+        type: "community",
+        country: "ID",
+        city: "Jakarta",
+        website: "https://id-networkers.com",
+        logo: "Network",
+        desc: "Komunitas profesional dan praktisi jaringan terbesar di Indonesia untuk edukasi routing, switching, dan pertahanan perimeter.",
+        contact: "Network Lead IDN",
+        email: "partner@id-networkers.com",
+        cats: JSON.stringify(["mentorship", "cyber_range", "events"]),
+        ref: "COM-IDN-2026-04",
+      },
+      {
+        id: "part-owasp-id",
+        name: "OWASP Indonesia Chapter",
+        type: "open_source",
+        country: "ID",
+        city: "Jakarta",
+        website: "https://owasp.org/www-chapter-indonesia/",
+        logo: "Shield",
+        desc: "Afiliasi komunitas global open-source untuk sosialisasi OWASP Top 10, Secure Coding, dan Web Security Application Testing.",
+        contact: "OWASP Chapter Leader",
+        email: "indonesia@owasp.org",
+        cats: JSON.stringify(["curriculum", "events", "research"]),
+        ref: "OS-OWASP-ID-2026-05",
+      },
+      {
+        id: "part-apnic-fdn",
+        name: "APNIC Foundation Community Research",
+        type: "tech_edu",
+        country: "AU",
+        city: "Brisbane",
+        website: "https://apnic.foundation",
+        logo: "Globe",
+        desc: "Dukungan edukasi keamanan infrastruktur Internet (RPKI, BGP Security, DNSSEC, dan IPv6 Deployment) untuk wilayah Asia Pasifik.",
+        contact: "Internet Security Officer",
+        email: "grants@apnic.foundation",
+        cats: JSON.stringify(["curriculum", "research"]),
+        ref: "EDU-APNIC-2026-06",
+      },
+    ];
+
+    for (const p of partners) {
+      insertPartner.run(
+        p.id, p.name, p.type, p.country, p.city, p.website, p.logo,
+        p.desc, p.contact, p.email, p.cats, p.ref, now, now, now
+      );
+    }
+  }
+
+  // 16. Seed Phase 8: Open-Source Contribution Tasks
+  const checkContribTasks = db.prepare("SELECT count(*) as count FROM contribution_tasks").get() as { count: number };
+  if (checkContribTasks.count === 0) {
+    const now = new Date().toISOString();
+    const insertTask = db.prepare(`
+      INSERT INTO contribution_tasks (
+        id, title, category, difficulty, description, requirements,
+        status, issue_url, pr_url, reward_xp, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, '', ?, ?, ?)
+    `);
+
+    const tasks = [
+      {
+        id: "task-01-en-translation",
+        title: "Penerjemahan Lengkap Kurikulum Linux ke Bahasa Inggris",
+        cat: "translation",
+        diff: "easy",
+        desc: "Menerjemahkan 4 berkas markdown materi Linux Administration (Fundamentals, CLI, File Permissions, SSH Hardening) ke English dengan terminologi siber akurat.",
+        reqs: JSON.stringify(["Memahami istilah Linux & Bash", "Standar penulisan Markdown bilingual"]),
+        issue: "https://github.com/CyberLab-ID/cyberlab-id/issues/101",
+        xp: 40,
+      },
+      {
+        id: "task-02-range-snort",
+        title: "Template Praktikum Cyber Range: Snort NIDS Live Alert",
+        cat: "lab",
+        diff: "hard",
+        desc: "Mengembangkan skenario virtual lab inspeksi aturan Snort / Suricata yang mendeteksi port scan TCP SYN dan alert HTTP payload.",
+        reqs: JSON.stringify(["Memahami sintaks Snort Rule", "JSON format stateful lab checkpoints"]),
+        issue: "https://github.com/CyberLab-ID/cyberlab-id/issues/102",
+        xp: 80,
+      },
+      {
+        id: "task-03-api-docs",
+        title: "Pembuatan Skema OpenAPI v3.1 & SDK Python Ringan",
+        cat: "docs",
+        diff: "medium",
+        desc: "Menuliskan spesifikasi openapi.json untuk endpoint Public API v1 (/api/v1/*) dan membuat helper script Python client (cyberlab-py).",
+        reqs: JSON.stringify(["Spesifikasi OpenAPI / Swagger", "Python requests"]),
+        issue: "https://github.com/CyberLab-ID/cyberlab-id/issues/103",
+        xp: 60,
+      },
+      {
+        id: "task-04-ctf-jwt",
+        title: "Tantangan CTF Baru: Injeksi JWT None Algorithm & Key Confusion",
+        cat: "module",
+        diff: "medium",
+        desc: "Membuat tantangan Jeopardy Web Security bertema JSON Web Token: memanipulasi algoritma 'none' dan secret key brute forcing.",
+        reqs: JSON.stringify(["Arsitektur CTF CyberLab-ID", "Flag hashing SHA-256 standard"]),
+        issue: "https://github.com/CyberLab-ID/cyberlab-id/issues/104",
+        xp: 75,
+      },
+    ];
+
+    for (const t of tasks) {
+      insertTask.run(t.id, t.title, t.cat, t.diff, t.desc, t.reqs, t.issue, t.xp, now, now);
+    }
+  }
+
+  // 17. Seed Phase 8: External Knowledge Cache
+  const checkExtCache = db.prepare("SELECT count(*) as count FROM external_knowledge_cache").get() as { count: number };
+  if (checkExtCache.count === 0) {
+    const now = new Date().toISOString();
+    const farFuture = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString();
+    const insertCache = db.prepare(`
+      INSERT INTO external_knowledge_cache (
+        id, source_type, reference_id, title, summary, severity,
+        data_payload, source_attribution, cached_at, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const items = [
+      // MITRE ATT&CK
+      {
+        id: "att-t1059",
+        src: "mitre_attack",
+        ref: "T1059",
+        title: "Command and Scripting Interpreter",
+        summary: "Penyerang menyalahgunakan shell perintah (Bash, PowerShell, Python) untuk mengeksekusi instruksi arbitrer pada host target.",
+        sev: "high",
+        payload: JSON.stringify({
+          tactic: "Execution",
+          subtechniques: ["T1059.004 (Unix Shell)", "T1059.001 (PowerShell)"],
+          mitigations: ["M1038 (Execution Prevention)", "M1026 (Privileged Account Management)"],
+          cyberlabModule: "/learning/linux/linux-command-line",
+        }),
+        attr: "MITRE ATT&CK Framework (https://attack.mitre.org)",
+      },
+      {
+        id: "att-t1190",
+        src: "mitre_attack",
+        ref: "T1190",
+        title: "Exploit Public-Facing Application",
+        summary: "Pemanfaatan kelemahan keamanan pada aplikasi web atau layanan publik untuk mendapatkan akses eksekusi kode awal tanpa autentikasi.",
+        sev: "critical",
+        payload: JSON.stringify({
+          tactic: "Initial Access",
+          examples: ["SQL Injection", "Log4Shell", "Remote Code Execution"],
+          mitigations: ["Patch Management", "Web Application Firewall (WAF)", "Least Privilege Network Zoning"],
+          cyberlabModule: "/learning/web-security/sql-injection",
+        }),
+        attr: "MITRE ATT&CK Framework (https://attack.mitre.org)",
+      },
+      {
+        id: "att-t1110",
+        src: "mitre_attack",
+        ref: "T1110",
+        title: "Brute Force / Password Guessing",
+        summary: "Upaya berulang menebak kata sandi atau kredensial autentikasi sistem secara sistematis menggunakan wordlist otomatis.",
+        sev: "medium",
+        payload: JSON.stringify({
+          tactic: "Credential Access",
+          subtechniques: ["T1110.001 (Password Guessing)", "T1110.003 (Password Spraying)"],
+          mitigations: ["Account Lockout Policies", "Fail2ban Rate Limiting", "Multi-Factor Authentication (MFA)"],
+          cyberlabModule: "/learning/linux/ssh-hardening",
+        }),
+        attr: "MITRE ATT&CK Framework (https://attack.mitre.org)",
+      },
+      // NIST CSF
+      {
+        id: "nist-pr-ac",
+        src: "nist_csf",
+        ref: "PR.AC",
+        title: "Identity Management, Authentication and Access Control",
+        summary: "Akses ke aset fisik dan logis serta fasilitas terkait dibatasi hanya untuk pengguna, proses, dan perangkat yang terverifikasi.",
+        sev: "high",
+        payload: JSON.stringify({
+          function: "PROTECT (PR)",
+          category: "Access Control",
+          subcategories: ["PR.AC-1: Identitas dan kredensial dikelola terpusat", "PR.AC-4: Hak akses dikelola dengan prinsip Least Privilege"],
+          cyberlabModule: "/learning/linux/file-permissions",
+        }),
+        attr: "NIST Cybersecurity Framework v2.0 (https://csrc.nist.gov)",
+      },
+      {
+        id: "nist-de-cm",
+        src: "nist_csf",
+        ref: "DE.CM",
+        title: "Security Continuous Monitoring",
+        summary: "Jaringan dan aset sistem dipantau secara berkala untuk mengidentifikasi anomali, serangan siber, dan efektivitas proteksi.",
+        sev: "medium",
+        payload: JSON.stringify({
+          function: "DETECT (DE)",
+          category: "Continuous Monitoring",
+          subcategories: ["DE.CM-1: Jaringan dipantau untuk mendeteksi potensi serangan", "DE.CM-7: Pemantauan aktivitas personel dan akun"],
+          cyberlabModule: "/learning/networking/packet-analysis",
+        }),
+        attr: "NIST Cybersecurity Framework v2.0 (https://csrc.nist.gov)",
+      },
+      // OWASP Top 10
+      {
+        id: "owasp-a01",
+        src: "owasp_top10",
+        ref: "A01:2021",
+        title: "Broken Access Control",
+        summary: "Kelemahan kontrol otorisasi yang memungkinkan pengguna mengakses sumber daya, akun lain, atau fungsionalitas admin yang bukan haknya.",
+        sev: "critical",
+        payload: JSON.stringify({
+          cweIds: ["CWE-200", "CWE-284"],
+          impact: "Exfiltration of sensitive user data, unauthorized privilege escalation",
+          defenses: ["Deny by default", "Enforce server-side role and ownership validation on every request"],
+          cyberlabModule: "/learning/web-security/broken-access-control",
+        }),
+        attr: "OWASP Top 10:2021 (https://owasp.org/Top10)",
+      },
+      {
+        id: "owasp-a03",
+        src: "owasp_top10",
+        ref: "A03:2021",
+        title: "Injection (SQL, NoSQL, OS Command)",
+        summary: "Masukan data pengguna yang tidak divalidasi langsung diselipkan ke dalam interpreter query atau perintah sistem.",
+        sev: "critical",
+        payload: JSON.stringify({
+          cweIds: ["CWE-79", "CWE-89"],
+          impact: "Database dump, remote code execution, authentication bypass",
+          defenses: ["Parameterized queries (Prepared Statements)", "Context-aware output encoding"],
+          cyberlabModule: "/learning/web-security/sql-injection",
+        }),
+        attr: "OWASP Top 10:2021 (https://owasp.org/Top10)",
+      },
+      // Public CVE Records
+      {
+        id: "cve-2023-44487",
+        src: "cve_nvd",
+        ref: "CVE-2023-44487",
+        title: "HTTP/2 Rapid Reset Attack (DDoS)",
+        summary: "Protokol HTTP/2 rentan terhadap serangan penolakan layanan (Denial of Service) melalui pengiriman aliran request RST_STREAM berulang dalam jumlah masif.",
+        sev: "high",
+        payload: JSON.stringify({
+          cvssScore: 7.5,
+          affectedProtocols: ["HTTP/2 implementations"],
+          publishedDate: "2023-10-10",
+          mitigation: "Batasi laju penerimaan frame RST_STREAM pada reverse proxy Nginx/Cloudflare atau turunkan batas max_concurrent_streams.",
+        }),
+        attr: "NVD NIST / CVE Project (https://nvd.nist.gov)",
+      },
+      {
+        id: "cve-2021-44228",
+        src: "cve_nvd",
+        ref: "CVE-2021-44228",
+        title: "Apache Log4j2 JNDI Remote Code Execution (Log4Shell)",
+        summary: "Pustaka logging Log4j mengevaluasi lookup JNDI bersarang tanpa validasi, memungkinkan penyerang mengeksekusi kode Java arbitrer dari server LDAP/RMI eksternal.",
+        sev: "critical",
+        payload: JSON.stringify({
+          cvssScore: 10.0,
+          affectedComponents: ["Apache Log4j 2.0-beta9 through 2.15.0"],
+          publishedDate: "2021-12-10",
+          mitigation: "Perbarui ke Log4j versi >= 2.17.1 dan nonaktifkan lookup pesan JNDI (log4j2.formatMsgNoLookups=true).",
+        }),
+        attr: "NVD NIST / CVE Project (https://nvd.nist.gov)",
+      },
+      {
+        id: "cve-2024-3094",
+        src: "cve_nvd",
+        ref: "CVE-2024-3094",
+        title: "XZ Utils / liblzma Malicious Backdoor",
+        summary: "Sisipan kode backdoor tersembunyi pada tarball rilis XZ Utils versi 5.6.0 dan 5.6.1 yang mencegat fungsi RSA SSH daemon (sshd) pada Linux.",
+        sev: "critical",
+        payload: JSON.stringify({
+          cvssScore: 10.0,
+          affectedComponents: ["XZ Utils 5.6.0, 5.6.1"],
+          publishedDate: "2024-03-29",
+          mitigation: "Segera lakukan downgrade paket XZ Utils ke versi 5.4.x stabil pada seluruh distribusi Linux produksi.",
+        }),
+        attr: "NVD NIST / CVE Project (https://nvd.nist.gov)",
+      },
+    ];
+
+    for (const item of items) {
+      insertCache.run(
+        item.id, item.src, item.ref, item.title, item.summary, item.sev,
+        item.payload, item.attr, now, farFuture
+      );
+    }
+  }
+
+  // 18. Seed Phase 8: Community Groups
+  const checkGroups = db.prepare("SELECT count(*) as count FROM community_groups").get() as { count: number };
+  if (checkGroups.count === 0) {
+    const now = new Date().toISOString();
+    const insertGroup = db.prepare(`
+      INSERT INTO community_groups (
+        id, name, slug, category, region_or_language, description, member_count, is_official, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `);
+
+    const groups = [
+      {
+        id: "grp-nasional-id",
+        name: "CyberLab-ID Komunitas Nasional (Indonesia)",
+        slug: "indonesia-national",
+        cat: "regional",
+        reg: "Indonesia (Bahasa Indonesia)",
+        desc: "Ruang diskusi utama bagi pelajar, mahasiswa, dan praktisi keamanan siber di seluruh pelosok nusantara.",
+        count: 1420,
+      },
+      {
+        id: "grp-global-eng",
+        name: "CyberLab Global Community (English Hub)",
+        slug: "global-english",
+        cat: "regional",
+        reg: "Global (English)",
+        desc: "International hub for cross-border cybersecurity education, open-source contributors, and research collaboration.",
+        count: 580,
+      },
+      {
+        id: "grp-ctf-squad",
+        name: "Competitive CTF & Bug Bounty Guild",
+        slug: "ctf-bug-bounty",
+        cat: "topic",
+        reg: "Global",
+        desc: "Diskusi taktik pemecahan tantangan Jeopardy, teknik eksploitasi defensif, serta write-up kompetisi CTF tingkat regional dan internasional.",
+        count: 890,
+      },
+      {
+        id: "grp-academic-research",
+        name: "Academic Researchers & Educators Circle",
+        slug: "academic-research",
+        cat: "academic",
+        reg: "Global",
+        desc: "Forum bagi dosen, guru SMK, dan peneliti untuk merancang kurikulum praktikum siber dan publikasi ilmiah bersama.",
+        count: 320,
+      },
+    ];
+
+    for (const g of groups) {
+      insertGroup.run(g.id, g.name, g.slug, g.cat, g.reg, g.desc, g.count, now);
+    }
   }
 }
 
