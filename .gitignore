@@ -31,12 +31,14 @@ Thumbs.db
 coverage/
 .nyc_output/
 
-# Database
+# Database & Backups
 data/*.db*
 *.db
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+backups/
+*.manifest.json
 
 # Misc
 *.tsbuildinfo

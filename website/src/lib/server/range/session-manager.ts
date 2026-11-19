@@ -1,4 +1,4 @@
-import { getDb, logAudit, createNotification } from "../db.ts";
+import { getDb, runTransaction, logAudit, createNotification } from "../db.ts";
 import type { LabSession, LabTemplate, TerminalExecutionResult } from "./types.ts";
 import { checkDockerAvailable, executeVirtualCommand, getOrCreateVirtualState } from "./driver.ts";
 import crypto from "node:crypto";
@@ -238,68 +238,70 @@ export async function completeLabSession(
     };
   }
 
-  // 3. Record completion & award XP
+  // 3. Record completion & award XP atomically inside transaction
   const now = new Date().toISOString();
   const completionId = `comp_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+  const badgesUnlocked: string[] = [];
 
-  db.prepare(`
-    INSERT INTO lab_completions (id, user_id, template_id, session_id, xp_awarded, evidence_summary, completed_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(completionId, userId, template.id, session.id, template.xp_reward, summary, now);
+  runTransaction((txDb) => {
+    txDb.prepare(`
+      INSERT INTO lab_completions (id, user_id, template_id, session_id, xp_awarded, evidence_summary, completed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(completionId, userId, template.id, session.id, template.xp_reward, summary, now);
 
-  db.prepare(`
-    UPDATE lab_sessions
-    SET status = 'completed', completed_at = ?
-    WHERE id = ?
-  `).run(now, session.id);
+    txDb.prepare(`
+      UPDATE lab_sessions
+      SET status = 'completed', completed_at = ?
+      WHERE id = ?
+    `).run(now, session.id);
 
-  db.prepare(`
-    UPDATE users
-    SET total_xp = total_xp + ?, updated_at = ?
-    WHERE id = ?
-  `).run(template.xp_reward, now, userId);
+    txDb.prepare(`
+      UPDATE users
+      SET total_xp = total_xp + ?, updated_at = ?
+      WHERE id = ?
+    `).run(template.xp_reward, now, userId);
+
+    // 4. Check & Unlock Phase 4 Badges
+    const completionsCount = (
+      txDb.prepare("SELECT count(*) as count FROM lab_completions WHERE user_id = ?").get(userId) as { count: number }
+    ).count;
+
+    // Range Commander (3+ labs)
+    if (completionsCount >= 3) {
+      const ach = txDb.prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = 'range-commander'").get(userId);
+      if (!ach) {
+        txDb.prepare(`
+          INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
+          VALUES (?, ?, 'range-commander', ?)
+        `).run(`uach_${userId}_range_cmd`, userId, now);
+        txDb.prepare("UPDATE users SET total_xp = total_xp + 100 WHERE id = ?").run(userId);
+        badgesUnlocked.push("Range Commander (+100 XP)");
+      }
+    }
+
+    // Category specific badges
+    const categoryBadgeMap: Record<string, { code: string; title: string; bonus: number }> = {
+      Networking: { code: "network-architect", title: "Network Architect", bonus: 60 },
+      "Web Security": { code: "appsec-breaker", title: "AppSec Breaker", bonus: 60 },
+      "Digital Forensics": { code: "forensics-investigator", title: "Forensic Investigator", bonus: 60 },
+      "Reverse Engineering": { code: "binary-analyst", title: "Binary Analyst", bonus: 60 },
+    };
+
+    const catMatch = categoryBadgeMap[template.category];
+    if (catMatch) {
+      const ach = txDb.prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = ?").get(userId, catMatch.code);
+      if (!ach) {
+        txDb.prepare(`
+          INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
+          VALUES (?, ?, ?, ?)
+        `).run(`uach_${userId}_${catMatch.code}`, userId, catMatch.code, now);
+        txDb.prepare("UPDATE users SET total_xp = total_xp + ? WHERE id = ?").run(catMatch.bonus, userId);
+        badgesUnlocked.push(`${catMatch.title} (+${catMatch.bonus} XP)`);
+      }
+    }
+  });
 
   logAudit(userId, "COMPLETE_LAB", "lab_template", template.id, `Completed lab for +${template.xp_reward} XP`);
-
-  // 4. Check & Unlock Phase 4 Badges
-  const badgesUnlocked: string[] = [];
-  const completionsCount = (
-    db.prepare("SELECT count(*) as count FROM lab_completions WHERE user_id = ?").get(userId) as { count: number }
-  ).count;
-
-  // Range Commander (3+ labs)
-  if (completionsCount >= 3) {
-    const ach = db.prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = 'range-commander'").get(userId);
-    if (!ach) {
-      db.prepare(`
-        INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
-        VALUES (?, ?, 'range-commander', ?)
-      `).run(`uach_${userId}_range_cmd`, userId, now);
-      db.prepare("UPDATE users SET total_xp = total_xp + 100 WHERE id = ?").run(userId);
-      badgesUnlocked.push("Range Commander (+100 XP)");
-    }
-  }
-
-  // Category specific badges
-  const categoryBadgeMap: Record<string, { code: string; title: string; bonus: number }> = {
-    Networking: { code: "network-architect", title: "Network Architect", bonus: 60 },
-    "Web Security": { code: "appsec-breaker", title: "AppSec Breaker", bonus: 60 },
-    "Digital Forensics": { code: "forensics-investigator", title: "Forensic Investigator", bonus: 60 },
-    "Reverse Engineering": { code: "binary-analyst", title: "Binary Analyst", bonus: 60 },
-  };
-
-  const catMatch = categoryBadgeMap[template.category];
-  if (catMatch) {
-    const ach = db.prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = ?").get(userId, catMatch.code);
-    if (!ach) {
-      db.prepare(`
-        INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
-        VALUES (?, ?, ?, ?)
-      `).run(`uach_${userId}_${catMatch.code}`, userId, catMatch.code, now);
-      db.prepare("UPDATE users SET total_xp = total_xp + ? WHERE id = ?").run(catMatch.bonus, userId);
-      badgesUnlocked.push(`${catMatch.title} (+${catMatch.bonus} XP)`);
-    }
-  }
 
   let notifMsg = `Selamat! Anda berhasil menyelesaikan Cyber Range "${template.title}" (+${template.xp_reward} XP).`;
   if (badgesUnlocked.length > 0) {

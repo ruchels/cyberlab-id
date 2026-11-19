@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, hashString } from "@/lib/server/db";
+import { getDb, hashString, runTransaction } from "@/lib/server/db";
 import { getSessionUser, checkRateLimit, createNotification, logAudit } from "@/lib/server/auth";
 import crypto from "node:crypto";
 
@@ -93,64 +93,65 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Award points & record solve
+    // 4. Award points & record solve atomically
     const now = new Date().toISOString();
     const solveId = `sol_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
-
-    db.prepare(`
-      INSERT INTO ctf_solves (id, user_id, challenge_id, points_awarded, solved_at)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(solveId, user.id, challenge.id, challenge.points, now);
-
-    // Update challenge solves count
-    db.prepare("UPDATE ctf_challenges SET solves_count = solves_count + 1 WHERE id = ?").run(challenge.id);
-
-    // Update user total XP
-    db.prepare("UPDATE users SET total_xp = total_xp + ?, updated_at = ? WHERE id = ?").run(
-      challenge.points,
-      now,
-      user.id
-    );
-
-    logAudit(user.id, "CTF_SOLVED", "ctf_challenge", challenge.id, `Solved for +${challenge.points} XP`);
-
-    // 5. Check and unlock achievements
-    const solvesCountRow = db
-      .prepare("SELECT count(*) as count FROM ctf_solves WHERE user_id = ?")
-      .get(user.id) as { count: number };
-    const totalSolves = solvesCountRow.count;
-
     const unlockedBadges: string[] = [];
 
-    // Check CTF Rookie
-    if (totalSolves >= 1) {
-      const achRookie = db
-        .prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = 'ctf-rookie'")
-        .get(user.id);
-      if (!achRookie) {
-        db.prepare(`
-          INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
-          VALUES (?, ?, 'ctf-rookie', ?)
-        `).run(`uach_${user.id}_rookie`, user.id, now);
-        db.prepare("UPDATE users SET total_xp = total_xp + 50 WHERE id = ?").run(user.id);
-        unlockedBadges.push("CTF Rookie (+50 XP)");
-      }
-    }
+    runTransaction((txDb) => {
+      txDb.prepare(`
+        INSERT INTO ctf_solves (id, user_id, challenge_id, points_awarded, solved_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(solveId, user.id, challenge.id, challenge.points, now);
 
-    // Check CTF Specialist
-    if (totalSolves >= 5) {
-      const achSpec = db
-        .prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = 'ctf-specialist'")
-        .get(user.id);
-      if (!achSpec) {
-        db.prepare(`
-          INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
-          VALUES (?, ?, 'ctf-specialist', ?)
-        `).run(`uach_${user.id}_specialist`, user.id, now);
-        db.prepare("UPDATE users SET total_xp = total_xp + 100 WHERE id = ?").run(user.id);
-        unlockedBadges.push("CTF Specialist (+100 XP)");
+      // Update challenge solves count
+      txDb.prepare("UPDATE ctf_challenges SET solves_count = solves_count + 1 WHERE id = ?").run(challenge.id);
+
+      // Update user total XP
+      txDb.prepare("UPDATE users SET total_xp = total_xp + ?, updated_at = ? WHERE id = ?").run(
+        challenge.points,
+        now,
+        user.id
+      );
+
+      // 5. Check and unlock achievements
+      const solvesCountRow = txDb
+        .prepare("SELECT count(*) as count FROM ctf_solves WHERE user_id = ?")
+        .get(user.id) as { count: number };
+      const totalSolves = solvesCountRow.count;
+
+      // Check CTF Rookie
+      if (totalSolves >= 1) {
+        const achRookie = txDb
+          .prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = 'ctf-rookie'")
+          .get(user.id);
+        if (!achRookie) {
+          txDb.prepare(`
+            INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
+            VALUES (?, ?, 'ctf-rookie', ?)
+          `).run(`uach_${user.id}_rookie`, user.id, now);
+          txDb.prepare("UPDATE users SET total_xp = total_xp + 50 WHERE id = ?").run(user.id);
+          unlockedBadges.push("CTF Rookie (+50 XP)");
+        }
       }
-    }
+
+      // Check CTF Specialist
+      if (totalSolves >= 5) {
+        const achSpec = txDb
+          .prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = 'ctf-specialist'")
+          .get(user.id);
+        if (!achSpec) {
+          txDb.prepare(`
+            INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
+            VALUES (?, ?, 'ctf-specialist', ?)
+          `).run(`uach_${user.id}_specialist`, user.id, now);
+          txDb.prepare("UPDATE users SET total_xp = total_xp + 100 WHERE id = ?").run(user.id);
+          unlockedBadges.push("CTF Specialist (+100 XP)");
+        }
+      }
+    });
+
+    logAudit(user.id, "CTF_SOLVED", "ctf_challenge", challenge.id, `Solved for +${challenge.points} XP`);
 
     // Notification
     let notifMsg = `Selamat! Anda berhasil menyelesaikan tantangan "${challenge.title}" dan mendapatkan +${challenge.points} XP.`;

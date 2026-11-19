@@ -289,12 +289,32 @@ export function executeVirtualCommand(
 
     case "ping": {
       const host = args[0] || "127.0.0.1";
-      output = `PING ${host} (${host}) 56(84) bytes of data.\n64 bytes from ${host}: icmp_seq=1 ttl=64 time=0.241 ms\n64 bytes from ${host}: icmp_seq=2 ttl=64 time=0.188 ms\n\n--- ${host} ping statistics ---\n2 packets transmitted, 2 received, 0% packet loss, time 1002ms`;
+      if (host.includes("169.254") || host.includes("metadata")) {
+        output = `ping: connect: Network is unreachable (Range Security: Cloud Metadata access blocked)`;
+        exitCode = 1;
+      } else {
+        output = `PING ${host} (${host}) 56(84) bytes of data.\n64 bytes from ${host}: icmp_seq=1 ttl=64 time=0.241 ms\n64 bytes from ${host}: icmp_seq=2 ttl=64 time=0.188 ms\n\n--- ${host} ping statistics ---\n2 packets transmitted, 2 received, 0% packet loss, time 1002ms`;
+      }
+      break;
+    }
+
+    case "curl":
+    case "wget": {
+      const targetUrl = args[args.length - 1] || "";
+      if (targetUrl.includes("169.254.169.254") || targetUrl.includes("metadata.google.internal") || targetUrl.includes("169.254")) {
+        output = `${command}: (7) Failed to connect to ${targetUrl}: Network is unreachable\n[SECURITY ALERT] Outbound request to Cloud Metadata Service (IMDS) was blocked by Cyber Range Egress Isolation.`;
+        exitCode = 7;
+      } else if (targetUrl.includes("localhost") || targetUrl.includes("127.0.0.1") || targetUrl.includes("10.240.0.")) {
+        output = `HTTP/1.1 200 OK\nServer: CyberLab-ID-Range/2.5\nContent-Type: text/html\nContent-Length: 142\n\n<!DOCTYPE html><html><body><h1>CyberLab Range Sandbox Target</h1><p>Lab target application is running normally.</p></body></html>`;
+      } else {
+        output = `${command}: connect to external host '${targetUrl}' failed: Connection timed out (Outbound Internet egress disabled in Cyber Range isolation)`;
+        exitCode = 28;
+      }
       break;
     }
 
     case "help":
-      output = `CyberLab-ID Range Shell v2.4 (Isolated Safe Sandbox)\nAvailable commands:\n  pwd, whoami, ls, cd, cat, chmod, grep, find, ps, top, ip, ping, clear, uname, id, help`;
+      output = `CyberLab-ID Range Shell v2.5 (Production Hardened Sandbox)\nAvailable commands:\n  pwd, whoami, ls, cd, cat, chmod, grep, find, ps, top, ip, ping, curl, wget, clear, uname, id, help`;
       break;
 
     default:

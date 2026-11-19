@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cyberlab-range-egress-isolation
+  namespace: cyberlab-range
+spec:
+  podSelector:
+    matchLabels:
+      role: range-runner
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow communication only from Next.js web application
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: cyberlab-prod
+          podSelector:
+            matchLabels:
+              app: cyberlab-web
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 2222
+  egress:
+    # Deny Cloud Instance Metadata Service (AWS/GCP/Azure IMDS 169.254.169.254)
+    # Deny Internal Cluster Management & Production Databases
+    # Allow DNS only within cluster kube-dns
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53

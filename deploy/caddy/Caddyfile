@@ -1,0 +1,31 @@
+# ==============================================================================
+# CyberLab-ID — Production Caddy Server Configuration (Automated Let's Encrypt)
+# ==============================================================================
+
+cyberlab.id, www.cyberlab.id {
+    # Automatic TLS with Let's Encrypt
+    encode zstd gzip
+
+    # Production Security Headers
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';"
+        -Server
+    }
+
+    # Static Assets Caching
+    @static path /_next/static/*
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # Reverse proxy to Next.js server
+    reverse_proxy 127.0.0.1:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

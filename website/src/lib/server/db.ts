@@ -219,6 +219,20 @@ function initSchema(db: DatabaseSync) {
       completed_at TEXT NOT NULL,
       UNIQUE(user_id, template_id)
     );
+
+    -- Phase 5 Production Performance Indexes
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_users_total_xp ON users(total_xp DESC);
+    CREATE INDEX IF NOT EXISTS idx_community_posts_cat_created ON community_posts(category, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_community_comments_post_created ON community_comments(post_id, created_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_ctf_solves_user_challenge ON ctf_solves(user_id, challenge_id);
+    CREATE INDEX IF NOT EXISTS idx_ctf_solves_challenge ON ctf_solves(challenge_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created ON audit_logs(actor_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_lab_sessions_user_status ON lab_sessions(user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_lab_sessions_expires ON lab_sessions(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_lab_completions_user ON lab_completions(user_id);
   `);
 }
 
@@ -689,5 +703,18 @@ export function createNotification(userId: string, title: string, message: strin
     `).run(id, userId, title, message, type, link, now);
   } catch (err) {
     console.error("Failed to create notification:", err);
+  }
+}
+
+export function runTransaction<T>(callback: (db: DatabaseSync) => T): T {
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE;");
+  try {
+    const result = callback(db);
+    db.exec("COMMIT;");
+    return result;
+  } catch (error) {
+    db.exec("ROLLBACK;");
+    throw error;
   }
 }
