@@ -233,6 +233,189 @@ function initSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_lab_sessions_user_status ON lab_sessions(user_id, status);
     CREATE INDEX IF NOT EXISTS idx_lab_sessions_expires ON lab_sessions(expires_at);
     CREATE INDEX IF NOT EXISTS idx_lab_completions_user ON lab_completions(user_id);
+
+    -- =========================================================================
+    -- Phase 6: Ecosystem, Academy, Certs, Arena, Contributors, Research & Events
+    -- =========================================================================
+
+    CREATE TABLE IF NOT EXISTS academy_paths (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      target_audience TEXT NOT NULL,
+      prerequisites TEXT NOT NULL,
+      learning_objectives TEXT NOT NULL,
+      difficulty TEXT NOT NULL DEFAULT 'Beginner',
+      estimated_hours INTEGER NOT NULL DEFAULT 20,
+      category TEXT NOT NULL,
+      modules_list TEXT NOT NULL, -- JSON array of { type, id, title }
+      completion_xp INTEGER NOT NULL DEFAULT 150,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS academy_enrollments (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      path_id TEXT NOT NULL REFERENCES academy_paths(id) ON DELETE CASCADE,
+      progress_percent INTEGER NOT NULL DEFAULT 0,
+      completed_items TEXT NOT NULL DEFAULT '[]', -- JSON array of completed module/lab/ctf IDs
+      is_completed INTEGER NOT NULL DEFAULT 0,
+      enrolled_at TEXT NOT NULL,
+      completed_at TEXT,
+      UNIQUE(user_id, path_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS certificates (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      path_id TEXT NOT NULL REFERENCES academy_paths(id) ON DELETE CASCADE,
+      user_display_name TEXT NOT NULL,
+      path_title TEXT NOT NULL,
+      issue_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'valid', -- 'valid' | 'revoked'
+      revocation_reason TEXT DEFAULT '',
+      verification_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ctf_competitions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'individual', -- 'individual' | 'team'
+      format TEXT NOT NULL DEFAULT 'jeopardy',
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'upcoming', -- 'upcoming' | 'active' | 'concluded'
+      rules TEXT NOT NULL,
+      challenges_list TEXT NOT NULL DEFAULT '[]', -- JSON array of challenge IDs
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ctf_teams (
+      id TEXT PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL,
+      description TEXT DEFAULT '',
+      leader_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      invite_code TEXT UNIQUE NOT NULL,
+      total_points INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ctf_team_members (
+      id TEXT PRIMARY KEY,
+      team_id TEXT NOT NULL REFERENCES ctf_teams(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL DEFAULT 'member', -- 'leader' | 'member'
+      joined_at TEXT NOT NULL,
+      UNIQUE(team_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ctf_competition_solves (
+      id TEXT PRIMARY KEY,
+      competition_id TEXT NOT NULL REFERENCES ctf_competitions(id) ON DELETE CASCADE,
+      challenge_id TEXT NOT NULL REFERENCES ctf_challenges(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      team_id TEXT REFERENCES ctf_teams(id) ON DELETE SET NULL,
+      points INTEGER NOT NULL,
+      solved_at TEXT NOT NULL,
+      UNIQUE(competition_id, challenge_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS contributor_submissions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type TEXT NOT NULL, -- 'module' | 'tutorial' | 'lab' | 'challenge' | 'writeup' | 'tool' | 'doc' | 'research'
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      content TEXT NOT NULL,
+      tags TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'submitted', -- 'draft' | 'submitted' | 'in_review' | 'approved' | 'published' | 'rejected'
+      reviewer_feedback TEXT DEFAULT '',
+      reviewer_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS research_articles (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      author_name TEXT NOT NULL,
+      title TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      abstract TEXT NOT NULL,
+      category TEXT NOT NULL,
+      keywords TEXT NOT NULL DEFAULT '[]',
+      content TEXT NOT NULL,
+      references_list TEXT NOT NULL DEFAULT '[]',
+      is_writeup INTEGER NOT NULL DEFAULT 0,
+      related_challenge_id TEXT REFERENCES ctf_challenges(id) ON DELETE SET NULL,
+      has_spoilers INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'published', -- 'published' | 'pending' | 'draft'
+      views_count INTEGER NOT NULL DEFAULT 0,
+      likes_count INTEGER NOT NULL DEFAULT 0,
+      published_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS mentors (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      display_name TEXT NOT NULL,
+      bio TEXT NOT NULL,
+      specialties TEXT NOT NULL DEFAULT '[]', -- JSON array
+      is_available INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'verified', -- 'verified' | 'pending'
+      created_at TEXT NOT NULL,
+      UNIQUE(user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS mentorship_requests (
+      id TEXT PRIMARY KEY,
+      mentor_id TEXT NOT NULL REFERENCES mentors(id) ON DELETE CASCADE,
+      student_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      learning_goals TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'accepted' | 'rejected' | 'completed'
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS community_events (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'workshop', -- 'workshop' | 'webinar' | 'ctf' | 'study_group'
+      speaker_name TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      location_url TEXT NOT NULL DEFAULT 'https://meet.cyberlab.id',
+      max_participants INTEGER NOT NULL DEFAULT 100,
+      registered_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'scheduled', -- 'scheduled' | 'ongoing' | 'completed'
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS event_registrations (
+      id TEXT PRIMARY KEY,
+      event_id TEXT NOT NULL REFERENCES community_events(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      registered_at TEXT NOT NULL,
+      UNIQUE(event_id, user_id)
+    );
+
+    -- Phase 6 Indexes
+    CREATE INDEX IF NOT EXISTS idx_academy_enrollments_user_path ON academy_enrollments(user_id, path_id);
+    CREATE INDEX IF NOT EXISTS idx_certificates_user ON certificates(user_id);
+    CREATE INDEX IF NOT EXISTS idx_certificates_path ON certificates(path_id);
+    CREATE INDEX IF NOT EXISTS idx_ctf_teams_invite ON ctf_teams(invite_code);
+    CREATE INDEX IF NOT EXISTS idx_ctf_team_members_user ON ctf_team_members(user_id);
+    CREATE INDEX IF NOT EXISTS idx_contributor_submissions_user_status ON contributor_submissions(user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_research_articles_slug ON research_articles(slug);
+    CREATE INDEX IF NOT EXISTS idx_research_articles_status_cat ON research_articles(status, category);
+    CREATE INDEX IF NOT EXISTS idx_mentors_status ON mentors(status);
+    CREATE INDEX IF NOT EXISTS idx_mentorship_requests_mentor ON mentorship_requests(mentor_id, status);
+    CREATE INDEX IF NOT EXISTS idx_mentorship_requests_student ON mentorship_requests(student_id);
+    CREATE INDEX IF NOT EXISTS idx_community_events_time ON community_events(start_time);
   `);
 }
 
@@ -676,33 +859,510 @@ function seedInitialData(db: DatabaseSync) {
       );
     }
   }
+
+  // 7. Seed Phase 6 Achievements
+  const phase6Achievements = [
+    { code: "academy-graduate", title: "Academy Graduate", desc: "Selesaikan minimal 1 learning path di CyberLab Academy.", icon: "GraduationCap", cat: "academy", xp: 100 },
+    { code: "verified-scholar", title: "Verified Scholar", desc: "Dapatkan sertifikat internal kelulusan CyberLab-ID terverifikasi.", icon: "Award", cat: "academy", xp: 75 },
+    { code: "arena-gladiator", title: "Arena Gladiator", desc: "Berpartisipasi dalam kompetisi CTF Arena individu atau tim.", icon: "Swords", cat: "ctf", xp: 60 },
+    { code: "team-captain", title: "Team Captain", desc: "Bentuk dan pimpin tim kompetisi CTF di CyberLab Arena.", icon: "Users", cat: "ctf", xp: 50 },
+    { code: "community-contributor", title: "Community Contributor", desc: "Ajukan kontribusi materi/lab/tools yang disetujui di Contributor Hub.", icon: "GitPullRequest", cat: "general", xp: 80 },
+    { code: "security-researcher", title: "Security Researcher", desc: "Publikasikan artikel penelitian teknis di Research Hub.", icon: "BookOpen", cat: "general", xp: 90 },
+    { code: "trusted-mentor", title: "Trusted Mentor", desc: "Terdaftar sebagai mentor terverifikasi di CyberLab-ID.", icon: "HeartHandshake", cat: "general", xp: 70 },
+    { code: "event-attendee", title: "Event Attendee", desc: "Daftar dan ikuti workshop/webinar komunitas.", icon: "Calendar", cat: "general", xp: 40 },
+  ];
+
+  const insertPhase6Ach = db.prepare(`
+    INSERT OR IGNORE INTO achievements (id, code, title, description, icon, category, xp_reward)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const a of phase6Achievements) {
+    insertPhase6Ach.run(`ach_${a.code}`, a.code, a.title, a.desc, a.icon, a.cat, a.xp);
+  }
+
+  // 8. Seed 10 Academy Learning Paths
+  const checkAcademyPaths = db.prepare("SELECT count(*) as count FROM academy_paths").get() as { count: number };
+  if (checkAcademyPaths.count === 0) {
+    const now = new Date().toISOString();
+    const insertPath = db.prepare(`
+      INSERT INTO academy_paths (
+        id, title, description, target_audience, prerequisites, learning_objectives,
+        difficulty, estimated_hours, category, modules_list, completion_xp, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const paths = [
+      {
+        id: "path-cyber-basics",
+        title: "Cybersecurity Fundamentals",
+        description: "Fondasi esensial keamanan siber modern: prinsip CIA Triad, vektor ancaman digital, kebersihan siber, dan pengenalan regulasi privasi data.",
+        target_audience: "Pelajar SMK, mahasiswa baru, dan pemula tanpa latar belakang teknis.",
+        prerequisites: "Pengoperasian komputer dasar & pemahaman internet umum.",
+        learning_objectives: "1. Memahami prinsip Confidentiality, Integrity, Availability.\n2. Mengidentifikasi teknik rekayasa sosial dan phishing.\n3. Mengoperasikan alat analisis hash dan proteksi password.",
+        difficulty: "Beginner",
+        estimated_hours: 15,
+        category: "Fundamentals",
+        modules_list: JSON.stringify([
+          { type: "lesson", id: "linux-fundamentals", title: "Linux Basics & Shell" },
+          { type: "tool", id: "hash-inspector", title: "Hash Integrity Inspector" },
+          { type: "tool", id: "password-analyzer", title: "Password Entropy Analysis" },
+          { type: "ctf", id: "ctf_caesar", title: "Challenge: Classic Caesar Decryption" },
+        ]),
+        completion_xp: 150,
+      },
+      {
+        id: "path-linux-admin",
+        title: "Linux & System Administration",
+        description: "Penguasaan administrasi sistem operasi Linux: manajemen izin chmod/chown, audit berkas SUID, otomasi bash script, dan pengerasan sistem (hardening).",
+        target_audience: "Calon Administrator Sistem, DevOps engineer, dan Security Analyst.",
+        prerequisites: "Pemahaman dasar command line.",
+        learning_objectives: "1. Mengelola izin hak akses pengguna dan grup.\n2. Melakukan audit berkas SUID berbahaya pada Cyber Range.\n3. Menulis skrip automasi pemantauan log Linux.",
+        difficulty: "Beginner",
+        estimated_hours: 20,
+        category: "System Administration",
+        modules_list: JSON.stringify([
+          { type: "lesson", id: "linux-command-line", title: "Linux Command Line Mastery" },
+          { type: "lesson", id: "file-permissions", title: "File Permissions & Hardening" },
+          { type: "lab", id: "tpl-linux-core", title: "Range Lab: Linux Privilege Audit" },
+        ]),
+        completion_xp: 160,
+      },
+      {
+        id: "path-networking",
+        title: "Networking & Packet Routing",
+        description: "Arsitektur jaringan TCP/IP, protokol DNS/DHCP, subnetting IPv4/CIDR, packet sniffing, firewall stateful, dan analisis lalu lintas data.",
+        target_audience: "Siswa SMK TKJ, mahasiswa jaringan komputer, dan praktisi IT Support.",
+        prerequisites: "Konsep dasar komputer dan biner sederhana.",
+        learning_objectives: "1. Mengkalkulasi alokasi subnet CIDR dan gateway.\n2. Menganalisis alur paket DNS dan HTTP pada simulator jaringan.\n3. Mengkonfigurasi tabel routing antar subnet.",
+        difficulty: "Intermediate",
+        estimated_hours: 22,
+        category: "Networking",
+        modules_list: JSON.stringify([
+          { type: "lesson", id: "osi-tcpip-model", title: "OSI & TCP/IP Reference Model" },
+          { type: "tool", id: "subnet-calculator", title: "IPv4 Subnet & Host Calculator" },
+          { type: "lab", id: "tpl-net-topo", title: "Range Lab: Network Topology & Routing" },
+          { type: "ctf", id: "ctf_net_dns", title: "Challenge: Network DNS Forensics" },
+        ]),
+        completion_xp: 180,
+      },
+      {
+        id: "path-web-appsec",
+        title: "Web Application Security (OWASP Top 10)",
+        description: "Eksploitasi dan remediasi kerentanan aplikasi web: SQL Injection, Cross-Site Scripting (XSS), CSRF, Directory Traversal, dan implementasi Parameterized Queries.",
+        target_audience: "Full-Stack Web Developers, QA Engineers, dan Web Penetration Testers.",
+        prerequisites: "Dasar HTML, JavaScript, dan sintaks SQL dasar.",
+        learning_objectives: "1. Menemukan celah injeksi SQL pada input formulir.\n2. Melakukan mitigasi XSS melalui encoding kontekstual.\n3. Mengamankan endpoint API dengan parameterization AST.",
+        difficulty: "Intermediate",
+        estimated_hours: 25,
+        category: "Web Security",
+        modules_list: JSON.stringify([
+          { type: "lesson", id: "sql-injection", title: "SQL Injection Vectors & AST Mitigation" },
+          { type: "lesson", id: "cross-site-scripting", title: "XSS Stored, Reflected, & DOM" },
+          { type: "lab", id: "tpl-web-owasp", title: "Range Lab: OWASP Web Sandbox" },
+          { type: "ctf", id: "ctf_sqli_login", title: "Challenge: Auth Bypass SQLi" },
+        ]),
+        completion_xp: 200,
+      },
+      {
+        id: "path-cryptography",
+        title: "Applied Cryptography & Modern Ciphers",
+        description: "Prinsip enkripsi simetris (AES), asimetris (RSA, ECC), hashing kriptografis SHA-2/3, digital signatures, dan analisis cipher klasik.",
+        target_audience: "Software Engineers, Cryptography Enthusiasts, dan CTF Crypto Players.",
+        prerequisites: "Aritmatika modular dasar dan representasi hex/biner.",
+        learning_objectives: "1. Membedakan hashing, encoding, dan enkripsi.\n2. Memecahkan cipher klasik via analisis frekuensi.\n3. Memahami validasi public key dan sertifikat digital.",
+        difficulty: "Intermediate",
+        estimated_hours: 18,
+        category: "Cryptography",
+        modules_list: JSON.stringify([
+          { type: "tool", id: "cipher-toolkit", title: "Interactive Cipher & XOR Toolkit" },
+          { type: "ctf", id: "ctf_vigenere", title: "Challenge: Vigenere Cryptanalysis" },
+          { type: "ctf", id: "ctf_rsa_weak", title: "Challenge: RSA Small Prime Factoring" },
+        ]),
+        completion_xp: 170,
+      },
+      {
+        id: "path-digital-forensics",
+        title: "Digital Forensics & Incident Response (DFIR)",
+        description: "Teknik investigasi bukti digital: preservasi Chain of Custody, verifikasi hash bukti, deteksi magic bytes extension spoofing, dan rekonstruksi timeline insiden log.",
+        target_audience: "Incident Responders, Forensics Investigators, dan SOC Analysts.",
+        prerequisites: "Pemahaman struktur file dan sistem operasi.",
+        learning_objectives: "1. Menjaga integritas barang bukti via hash SHA-256.\n2. Mengidentifikasi berkas executable terselubung.\n3. Menyusun kronologi serangan berdasarkan web server access logs.",
+        difficulty: "Intermediate",
+        estimated_hours: 24,
+        category: "Digital Forensics",
+        modules_list: JSON.stringify([
+          { type: "tool", id: "file-signature-checker", title: "Hex Magic Bytes File Analyzer" },
+          { type: "tool", id: "metadata-inspector", title: "EXIF & Document Metadata Inspector" },
+          { type: "lab", id: "tpl-forensics-disk", title: "Range Lab: Evidence Carving & Timeline" },
+        ]),
+        completion_xp: 190,
+      },
+      {
+        id: "path-reverse-engineering",
+        title: "Reverse Engineering & Binary Analysis",
+        description: "Dekomposisi berkas biner ELF dan PE: instruksi assembly x86_64, pelacakan alur register CPU (EAX, ZF), analisis crackme, dan penambalan byte opcode percabangan.",
+        target_audience: "Malware Analysts, Exploit Developers, dan Reverse Engineers.",
+        prerequisites: "Dasar bahasa C/C++ dan konsep arsitektur komputer.",
+        learning_objectives: "1. Mengekstrak string teks tersembunyi dari binary terkompilasi.\n2. Menelusuri alur eksekusi logika percabangan kondisional assembly.\n3. Melakukan patching instruksi JNZ/JE untuk mem-bypass serial check.",
+        difficulty: "Advanced",
+        estimated_hours: 30,
+        category: "Reverse Engineering",
+        modules_list: JSON.stringify([
+          { type: "lab", id: "tpl-reverse-x86", title: "Range Lab: x86 Binary Disassembly" },
+          { type: "ctf", id: "ctf_patch_me", title: "Challenge: Crackme Binary Patch" },
+        ]),
+        completion_xp: 250,
+      },
+      {
+        id: "path-secops",
+        title: "Security Operations & Threat Hunting",
+        description: "Operasional pusat komando keamanan (SOC): pemantauan log telemetri terpusat, korelasi indikator kompromi (IoC), deteksi anomali, dan pembuatan playbook insiden.",
+        target_audience: "Tier 1/2 SOC Analysts dan Security Engineers.",
+        prerequisites: "Jaringan dasar & navigasi Linux.",
+        learning_objectives: "1. Menganalisis log audit insiden secara real-time.\n2. Mengidentifikasi pola serangan brute-force dan scanning.\n3. Menyusun rekomendasi remediasi insiden keamanan siber.",
+        difficulty: "Intermediate",
+        estimated_hours: 20,
+        category: "Operations",
+        modules_list: JSON.stringify([
+          { type: "lesson", id: "security-headers", title: "Defense-in-Depth & Security Headers" },
+          { type: "lab", id: "tpl-forensics-disk", title: "Range Lab: Log Correlation Analysis" },
+        ]),
+        completion_xp: 180,
+      },
+      {
+        id: "path-defensive-sec",
+        title: "Defensive Security & Infrastructure Hardening",
+        description: "Strategi pertahanan siber menyeluruh: konfigurasi firewall deny-by-default, isolasi kontainer OCI, kebijakan egress NetworkPolicy, dan manajemen secret aman.",
+        target_audience: "DevSecOps Engineers, Cloud Architects, dan System Administrators.",
+        prerequisites: "Administrasi Linux dan konsep container Docker.",
+        learning_objectives: "1. Mengkonfigurasi isolasi container dengan cap-drop ALL.\n2. Memblokir akses keluar ke Cloud Metadata Service.\n3. Mengimplementasikan rate limiting pada reverse proxy gateway.",
+        difficulty: "Intermediate",
+        estimated_hours: 22,
+        category: "Defensive Security",
+        modules_list: JSON.stringify([
+          { type: "lab", id: "tpl-linux-core", title: "Range Lab: Privilege & Permission Hardening" },
+          { type: "lesson", id: "security-headers", title: "Production Security Configurations" },
+        ]),
+        completion_xp: 190,
+      },
+      {
+        id: "path-ethical-hacking",
+        title: "Ethical Hacking & Penetration Testing",
+        description: "Metodologi pengujian penetrasi etis (PTES): tahapan reconnaissance, scanning & enumeration, exploitasi terkendali, dan pelaporan temuan profesional.",
+        target_audience: "Penetration Testers, Ethical Hackers, dan Security Consultants.",
+        prerequisites: "Penguasaan Linux, Jaringan, dan Web Security.",
+        learning_objectives: "1. Melakukan pemindaian footprinting tanpa merusak sistem.\n2. Mengevaluasi tingkat keparahan risiko berdasarkan skor CVSS.\n3. Menyusun laporan pengujian penetrasi dengan langkah remediasi.",
+        difficulty: "Advanced",
+        estimated_hours: 32,
+        category: "Ethical Hacking",
+        modules_list: JSON.stringify([
+          { type: "lab", id: "tpl-web-owasp", title: "Range Lab: Web Vulnerabilities Exploitation" },
+          { type: "lab", id: "tpl-net-topo", title: "Range Lab: Network Hop Traversing" },
+          { type: "ctf", id: "ctf_sqli_login", title: "Challenge: Auth Bypass PenTest" },
+        ]),
+        completion_xp: 260,
+      },
+    ];
+
+    for (const p of paths) {
+      insertPath.run(
+        p.id, p.title, p.description, p.target_audience, p.prerequisites, p.learning_objectives,
+        p.difficulty, p.estimated_hours, p.category, p.modules_list, p.completion_xp, now
+      );
+    }
+  }
+
+  // 9. Seed Sample CTF Competition
+  const checkComp = db.prepare("SELECT count(*) as count FROM ctf_competitions").get() as { count: number };
+  if (checkComp.count === 0) {
+    const now = new Date().toISOString();
+    const startTime = new Date(Date.now() - 3600000).toISOString(); // Started 1 hour ago
+    const endTime = new Date(Date.now() + 7 * 86400000).toISOString(); // Ends in 7 days
+    db.prepare(`
+      INSERT INTO ctf_competitions (
+        id, title, description, type, format, start_time, end_time, status, rules, challenges_list, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "comp_nusantara_2026",
+      "CyberLab Nusantara CTF Championship 2026",
+      "Kompetisi CTF Jeopardy tahunan komunitas Indonesia. Uji kemampuan kriptografi, forensik, web security, dan reverse engineering dalam format tim atau individu.",
+      "team",
+      "jeopardy",
+      startTime,
+      endTime,
+      "active",
+      "1. Dilarang melakukan DoS/DDoS pada server scoring.\n2. Dilarang berbagi flag antar tim (Anti-flag sharing).\n3. Flag format resmi: CYBERLAB{...}.\n4. Keputusan panitia bersifat mutlak.",
+      JSON.stringify(["ctf_caesar", "ctf_vigenere", "ctf_sqli_login", "ctf_magic_png", "ctf_net_dns", "ctf_patch_me"]),
+      now
+    );
+
+    // Seed Sample Teams
+    db.prepare(`
+      INSERT INTO ctf_teams (id, name, description, leader_id, invite_code, total_points, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run("team_garuda", "Garuda RedSec", "Tim praktikum cybersecurity spesialisasi offensive dan web exploitation.", "usr_budi", "GARUDA2026", 150, now);
+
+    db.prepare(`
+      INSERT INTO ctf_teams (id, name, description, leader_id, invite_code, total_points, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run("team_merdeka", "Merdeka BlueTeam", "Fokus pada incident response, log analysis, dan sistem pertahanan.", "usr_citra", "MERDEKA77", 125, now);
+
+    // Seed Team Members
+    db.prepare(`
+      INSERT INTO ctf_team_members (id, team_id, user_id, role, joined_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run("tm_1", "team_garuda", "usr_budi", "leader", now);
+
+    db.prepare(`
+      INSERT INTO ctf_team_members (id, team_id, user_id, role, joined_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run("tm_2", "team_merdeka", "usr_citra", "leader", now);
+  }
+
+  // 10. Seed Sample Research Articles
+  const checkResearch = db.prepare("SELECT count(*) as count FROM research_articles").get() as { count: number };
+  if (checkResearch.count === 0) {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO research_articles (
+        id, user_id, author_name, title, slug, abstract, category, keywords, content,
+        references_list, is_writeup, related_challenge_id, has_spoilers, status, views_count, likes_count, published_at, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "art_sqli_remediation",
+      "usr_citra",
+      "Citra Lestari",
+      "Analisis Mendalam: Parameterized Queries vs AST Level Query Sanitization",
+      "analisis-parameterized-queries-ast",
+      "Artikel ini membedah bagaimana Abstract Syntax Tree (AST) database parser bekerja ketika memproses prepared statement dan mengapa sanitasi karakter manual kerap gagal menangkal SQL Injection varian baru.",
+      "Web Security",
+      JSON.stringify(["SQLi", "Prepared Statements", "AST", "Database Security"]),
+      "## 1. Pendahuluan\nBanyak pengembang pemula mengira bahwa sanitasi karakter khusus seperti kutip tunggal (`'`) atau tanda minus ganda (`--`) sudah memadai untuk mencegah SQL Injection.\n\nNamun kenyataannya, parser database mengkompilasi string SQL mentah menjadi representasi pohon sintaks abstrak (Abstract Syntax Tree). Jika parameter pengguna disuntikkan sebelum AST selesai dibentuk, interpreter SQL akan memperlakukan data sebagai instruksi kode.\n\n## 2. Prepared Statements\nDengan prepared statement, mesin database mengkompilasi AST terlebih dahulu dengan placeholder parameter bertipe `?` atau `$1`. Data input yang diberikan kemudian hanya dianggap sebagai data literal murni.",
+      JSON.stringify(["OWASP SQL Injection Prevention Cheat Sheet", "RFC Database Prepared Statements Standards"]),
+      0,
+      null,
+      0,
+      "published",
+      142,
+      28,
+      now,
+      now
+    );
+
+    db.prepare(`
+      INSERT INTO research_articles (
+        id, user_id, author_name, title, slug, abstract, category, keywords, content,
+        references_list, is_writeup, related_challenge_id, has_spoilers, status, views_count, likes_count, published_at, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "art_magic_bytes_forensics",
+      "usr_budi",
+      "Budi Santoso",
+      "Teknik Forensik Digital: Deteksi File Masquerading Melalui Header Hex Magic Bytes",
+      "deteksi-file-masquerading-magic-bytes",
+      "Investigasi forensik terhadap teknik extension spoofing yang sering dimanfaatkan threat actor untuk menyelundupkan payload PE/EXE dengan ekstensi PDF atau PNG.",
+      "Digital Forensics",
+      JSON.stringify(["Magic Bytes", "File Signature", "Extension Spoofing", "DFIR"]),
+      "## Ringkasan Eksekutif\nSistem operasi modern seperti Windows sering kali menentukan aplikasi pembuka berkas semata-mata berdasarkan ekstensi nama file (`.pdf`, `.jpg`). Celah ini kerap dieksploitasi oleh malware untuk mengecoh pengguna.\n\n## Metodologi Analisis Hex\nDengan memeriksa 4 hingga 8 byte pertama (File Signature / Magic Bytes), investigator digital dapat memastikan tipe MIME asli berkas:\n- `4D 5A` (MZ): Windows Portable Executable (EXE/DLL)\n- `89 50 4E 47 0D 0A 1A 0A`: PNG Image\n- `25 50 44 46`: Adobe PDF Document",
+      JSON.stringify(["Gary Kessler File Signatures Table", "SANS Digital Forensics Pocket Guide"]),
+      0,
+      null,
+      0,
+      "published",
+      98,
+      19,
+      now,
+      now
+    );
+  }
+
+  // 11. Seed Sample Mentors
+  const checkMentors = db.prepare("SELECT count(*) as count FROM mentors").get() as { count: number };
+  if (checkMentors.count === 0) {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO mentors (id, user_id, display_name, bio, specialties, is_available, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "mentor_budi",
+      "usr_budi",
+      "Budi Santoso",
+      "Praktisi keamanan Linux & infrastruktur dengan pengalaman 6+ tahun di industri data center. Senang berbagi ilmu seputar pengerasan server dan DFIR.",
+      JSON.stringify(["Linux Hardening", "Digital Forensics", "Network Defense"]),
+      1,
+      "verified",
+      now
+    );
+
+    db.prepare(`
+      INSERT INTO mentors (id, user_id, display_name, bio, specialties, is_available, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "mentor_citra",
+      "usr_citra",
+      "Citra Lestari",
+      "Spesialis Application Security & CTF player. Membantu rekan-rekan pembelajar menguasai OWASP Top 10 dan dasar reverse engineering biner.",
+      JSON.stringify(["Web AppSec", "OWASP Top 10", "CTF Reverse Engineering"]),
+      1,
+      "verified",
+      now
+    );
+  }
+
+  // 12. Seed Community Events
+  const checkEvents = db.prepare("SELECT count(*) as count FROM community_events").get() as { count: number };
+  if (checkEvents.count === 0) {
+    const now = new Date().toISOString();
+    const event1Start = new Date(Date.now() + 2 * 86400000).toISOString(); // in 2 days
+    const event1End = new Date(Date.now() + 2 * 86400000 + 7200000).toISOString();
+    const event2Start = new Date(Date.now() + 5 * 86400000).toISOString(); // in 5 days
+    const event2End = new Date(Date.now() + 5 * 86400000 + 7200000).toISOString();
+
+    db.prepare(`
+      INSERT INTO community_events (
+        id, title, description, type, speaker_name, start_time, end_time, location_url, max_participants, registered_count, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "ev_websec_workshop",
+      "Hands-On Workshop: Membedah Celah OWASP Top 10 pada Cyber Range",
+      "Sesi praktik langsung secara daring menggunakan lingkungan Cyber Range terisolasi CyberLab-ID. Peserta akan mempraktikkan mitigasi SQL Injection dan XSS secara aman.",
+      "workshop",
+      "Citra Lestari (AppSec Specialist)",
+      event1Start,
+      event1End,
+      "https://meet.cyberlab.id/websec-workshop",
+      150,
+      48,
+      "scheduled",
+      now
+    );
+
+    db.prepare(`
+      INSERT INTO community_events (
+        id, title, description, type, speaker_name, start_time, end_time, location_url, max_participants, registered_count, status, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "ev_career_webinar",
+      "Webinar: Membangun Karir Profesional Cybersecurity dari Nol di Indonesia",
+      "Diskusi interaktif bersama praktisi industri mengenai jalur karir cybersecurity, sertifikasi yang relevan, serta kiat membangun portofolio pembuktian kompetensi.",
+      "webinar",
+      "Budi Santoso & Komunitas CyberLab-ID",
+      event2Start,
+      event2End,
+      "https://meet.cyberlab.id/career-webinar",
+      250,
+      112,
+      "scheduled",
+      now
+    );
+  }
 }
 
-export function logAudit(actorId: string, action: string, targetType: string, targetId: string, details: string) {
+export function logAudit(
+  actorId: string,
+  action: string,
+  targetTypeOrDetails: string = "system",
+  targetId: string = "none",
+  details?: string
+) {
   try {
     const db = getDb();
     const now = new Date().toISOString();
     const id = `audit_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const targetType = details !== undefined ? targetTypeOrDetails : "system";
+    const finalTargetId = details !== undefined ? targetId : "none";
+    const finalDetails = details !== undefined ? details : targetTypeOrDetails;
+
     db.prepare(`
       INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, details, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(id, actorId, action, targetType, targetId, details, now);
+    `).run(id, actorId, action, targetType, finalTargetId, finalDetails, now);
   } catch (err) {
     console.error("Failed to write audit log:", err);
   }
 }
 
-export function createNotification(userId: string, title: string, message: string, type: "info" | "achievement" | "ctf" | "comment" | "admin", link = "") {
+export function createNotification(
+  userId: string,
+  arg2: string,
+  arg3: string,
+  arg4: "info" | "achievement" | "ctf" | "comment" | "admin" | string = "info",
+  arg5: string = ""
+) {
   try {
     const db = getDb();
     const now = new Date().toISOString();
     const id = `notif_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+
+    const validTypes = ["info", "achievement", "ctf", "comment", "admin"];
+    let type = "info";
+    let title = "";
+    let message = "";
+    let link = "";
+
+    if (validTypes.includes(arg4)) {
+      title = arg2;
+      message = arg3;
+      type = arg4;
+      link = arg5;
+    } else if (validTypes.includes(arg2)) {
+      type = arg2;
+      title = arg3;
+      message = arg4;
+      link = arg5;
+    } else {
+      title = arg2;
+      message = arg3;
+      type = "info";
+      link = typeof arg4 === "string" ? arg4 : "";
+    }
+
     db.prepare(`
       INSERT INTO notifications (id, user_id, title, message, type, link, is_read, created_at)
       VALUES (?, ?, ?, ?, ?, ?, 0, ?)
     `).run(id, userId, title, message, type, link, now);
   } catch (err) {
     console.error("Failed to create notification:", err);
+  }
+}
+
+export function awardAchievement(userId: string, codeOrId: string) {
+  try {
+    const db = getDb();
+    const cleanCode = codeOrId.startsWith("ach_") ? codeOrId.replace(/^ach_/, "") : codeOrId;
+    const ach = db.prepare("SELECT * FROM achievements WHERE code = ? OR id = ?").get(cleanCode, codeOrId) as any;
+    if (!ach) return false;
+
+    const existing = db
+      .prepare("SELECT id FROM user_achievements WHERE user_id = ? AND achievement_code = ?")
+      .get(userId, ach.code);
+
+    if (existing) return false;
+
+    const id = `uach_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      INSERT INTO user_achievements (id, user_id, achievement_code, unlocked_at)
+      VALUES (?, ?, ?, ?)
+    `).run(id, userId, ach.code, now);
+
+    if (ach.xp_reward > 0) {
+      db.prepare("UPDATE users SET total_xp = total_xp + ?, updated_at = ? WHERE id = ?").run(ach.xp_reward, now, userId);
+    }
+
+    createNotification(
+      userId,
+      `Pencapaian Terbuka: ${ach.title}!`,
+      `${ach.description} (+${ach.xp_reward} XP)`,
+      "achievement",
+      "/progress"
+    );
+
+    return true;
+  } catch (err) {
+    console.error("Failed to award achievement:", err);
+    return false;
   }
 }
 

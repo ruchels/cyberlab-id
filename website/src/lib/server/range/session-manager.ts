@@ -161,7 +161,7 @@ export async function executeSessionCommand(
   let history: string[] = [];
   try {
     history = JSON.parse(session.terminal_history || "[]");
-  } catch {}
+  } catch { }
   history.push(rawCommand);
   if (history.length > 50) history.shift();
 
@@ -205,7 +205,7 @@ export async function completeLabSession(
   let criteriaObj: any = {};
   try {
     criteriaObj = JSON.parse(template.verification_criteria);
-  } catch {}
+  } catch { }
 
   let isValid = false;
   let summary = "Kriteria evaluasi lab terpenuhi melalui verifikasi checkpoint.";
@@ -218,7 +218,7 @@ export async function completeLabSession(
     let checkpointsState: Record<string, boolean> = {};
     try {
       checkpointsState = JSON.parse(session.checkpoints_state || "{}");
-    } catch {}
+    } catch { }
 
     const requiredCheckpoints = criteriaObj.checkpoints || [];
     if (requiredCheckpoints.length > 0) {

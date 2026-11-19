@@ -33,7 +33,10 @@ coverage/
 
 # Database & Backups
 data/*.db*
+website/data/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

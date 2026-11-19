@@ -5,6 +5,44 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.6.0] — Phase 6: Open Source Ecosystem, Cybersecurity Academy & Global Community (2026-11-19)
+
+### Added
+- **CyberLab-ID Academy (`/academy`)**:
+  - 10 structured practical learning paths across Beginner, Intermediate, and Advanced tiers: Cyber Basics, Linux Admin, Networking, Web AppSec, Cryptography, Digital Forensics, Reverse Engineering, SecOps, Defensive Security, and Ethical Hacking.
+  - Interactive path syllabus viewer (`/academy/[pathId]`) with modular checkoffs, progress calculation, and completion certificate claiming.
+- **Cryptographic Digital Certificate Verification (`/verify/[certId]`)**:
+  - Verifiable digital certificates issued upon 100% path completion with unique format `CERT-<HEX>`.
+  - Deterministic SHA-256 verification hash generated server-side from holder ID, path ID, and issue timestamp.
+  - Public verification lookup interface with QR code graphic representation and administrative revocation detection.
+  - Plain-text educational disclaimer emphasizing non-accredited open-source digital competency badges.
+- **CTF Competitive Arena & Squad Infrastructure (`/arena`, `/arena/teams`)**:
+  - Scheduled individual and team-based tournament competitions with real-time scoreboard.
+  - Team creation, membership management, and unique 6-character squad invitation codes (`CYB***`).
+  - Deterministic tie-breaking rules ordering tied scores by the earlier solve timestamp (`ORDER BY total_points DESC, solved_at ASC`).
+  - Anti-duplicate challenge solve guards enforcing unique `(competition_id, challenge_id, team_id)` constraints.
+- **Contributor Hub & Creator Workflows (`/contributors`)**:
+  - Community-driven submission pipeline for modules, CTF challenges, interactive labs, tutorials, write-ups, and tools.
+  - Administrative review queue and approval lifecycle (`submitted`, `in_review`, `approved`, `published`, `rejected`).
+  - Automated `community-contributor` achievement badge and XP award upon publication.
+- **Research Hub & Technical Write-ups (`/research`, `/research/[slug]`)**:
+  - Technical article reader supporting citations, tag filtering, and interactive likes.
+  - Automated anti-leak flag scanner detecting raw active CTF flag strings during article submission.
+  - Interactive anti-spoiler blur overlay for write-ups with solution gating.
+- **Community Mentorship & Event Operations (`/mentorship`, `/events`)**:
+  - Verified mentor directory with specialty tags and 1-on-1 consultation request flow.
+  - Community event calendar for webinars, workshops, study groups, and CTF gatherings with live capacity tracking and 1-click registration.
+- **Open-Source Hub & SEO (`/opensource`, `sitemap.xml`, `robots.txt`)**:
+  - Dedicated open-source governance portal with local development guidelines, Contributor Covenant Code of Conduct, and responsible disclosure policy.
+  - Dynamic `sitemap.xml` indexing all Academy paths, research articles, and public portals.
+  - Dynamic `robots.txt` protecting administrative and API endpoints.
+- **Automated Verification**:
+  - Phase 6 automated test suite (`test_phase6.mjs`) verifying all 14 ecosystem criteria.
+  - Zero regression across all 115 test cases (29 Phase 1/2, 12 Phase 3, 21 Phase 4, 25 Phase 5, 14 Backup/Restore, 14 Phase 6).
+  - Clean production build with Turbopack compiling 77 routes without warnings.
+
+---
+
 ## [2.5.0] — Phase 5: Production Readiness, Deployment & Ecosystem Launch (2026-11-19)
 
 ### Added

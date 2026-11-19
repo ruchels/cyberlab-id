@@ -24,6 +24,12 @@ import {
   User as UserIcon,
   Lock,
   Activity,
+  GraduationCap,
+  Swords,
+  GitPullRequest,
+  Compass,
+  Calendar,
+  Sparkles,
 } from "lucide-react";
 import { GithubIcon, Badge } from "@/components/ui";
 
@@ -33,14 +39,24 @@ export function Navbar() {
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems = [
+  const mainNavItems = [
     { href: "/", label: t.nav.home, icon: Terminal },
+    { href: "/academy", label: "Akademi", icon: GraduationCap },
     { href: "/learning", label: t.nav.learning, icon: BookOpen },
     { href: "/range", label: (t.nav as any).range || "Cyber Range", icon: Activity },
     { href: "/labs", label: t.nav.labs, icon: FlaskConical },
     { href: "/tools", label: t.nav.tools, icon: Wrench },
     { href: "/challenges", label: t.nav.challenges, icon: Trophy },
+    { href: "/arena", label: "Arena CTF", icon: Swords },
+    { href: "/research", label: "Riset", icon: FileText },
     { href: "/community", label: (t.nav as any).community || "Komunitas", icon: MessageSquare },
+  ];
+
+  const ecosystemItems = [
+    { href: "/contributors", label: "Kontributor", icon: GitPullRequest },
+    { href: "/mentorship", label: "Mentorship", icon: Compass },
+    { href: "/events", label: "Events", icon: Calendar },
+    { href: "/opensource", label: "Open Source", icon: GithubIcon },
     { href: "/leaderboard", label: (t.nav as any).leaderboard || "Peringkat", icon: Medal },
     { href: "/progress", label: t.nav.progress, icon: Award },
     { href: "/docs", label: t.nav.docs, icon: FileText },
@@ -56,7 +72,7 @@ export function Navbar() {
         {/* Brand Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2.5 font-mono text-base font-bold tracking-tight text-[var(--color-text)] hover:opacity-95 transition-opacity"
+          className="flex items-center gap-2.5 font-mono text-base font-bold tracking-tight text-[var(--color-text)] hover:opacity-95 transition-opacity shrink-0"
         >
           <div className="w-8 h-8 rounded bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-accent)]">
             <Shield className="w-4 h-4" />
@@ -64,14 +80,14 @@ export function Navbar() {
           <span>
             CyberLab<span className="text-[var(--color-accent)] font-extrabold">-ID</span>
           </span>
-          <span className="hidden lg:inline-block text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
-            v0.3
+          <span className="hidden xl:inline-block text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-accent)] border border-[var(--color-border)]">
+            v0.4 Eco
           </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden xl:flex items-center gap-1">
-          {navItems.map((item) => {
+        <nav className="hidden 2xl:flex items-center gap-1">
+          {mainNavItems.map((item) => {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
@@ -80,7 +96,7 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`px-2.5 py-1.5 rounded-md text-xs font-mono font-medium transition-colors duration-150 flex items-center gap-1.5 ${
+                className={`px-2 py-1.5 rounded-md text-xs font-mono font-medium transition-colors duration-150 flex items-center gap-1.5 ${
                   isActive
                     ? "bg-[var(--color-surface-elevated)] text-[var(--color-accent)] border border-[var(--color-border)]"
                     : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
@@ -95,6 +111,30 @@ export function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
+          {/* Quick Ecosystem Menu Pill */}
+          <div className="hidden lg:flex items-center gap-1 text-xs font-mono border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 rounded-md">
+            <Link
+              href="/opensource"
+              className="text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1.5 py-0.5 rounded transition-colors"
+            >
+              Open-Source
+            </Link>
+            <span className="text-[var(--color-border)]">|</span>
+            <Link
+              href="/events"
+              className="text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1.5 py-0.5 rounded transition-colors"
+            >
+              Events
+            </Link>
+            <span className="text-[var(--color-border)]">|</span>
+            <Link
+              href="/contributors"
+              className="text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] px-1.5 py-0.5 rounded transition-colors"
+            >
+              Kontribusi
+            </Link>
+          </div>
+
           {/* Notifications Bell */}
           <Link
             href="/notifications"
@@ -139,9 +179,6 @@ export function Navbar() {
                 <span className="hidden sm:inline text-[var(--color-text)] font-bold truncate max-w-[100px]">
                   {user.displayName}
                 </span>
-                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1 rounded">
-                  {user.totalXp} XP
-                </span>
               </Link>
             </div>
           ) : (
@@ -164,7 +201,7 @@ export function Navbar() {
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="xl:hidden p-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
+            className="2xl:hidden p-2 rounded text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
             aria-label="Toggle Navigation Menu"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -174,8 +211,11 @@ export function Navbar() {
 
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="xl:hidden border-b border-[var(--color-border)] bg-[#090d16] px-4 pt-2 pb-4 space-y-1">
-          {navItems.map((item) => {
+        <div className="2xl:hidden border-b border-[var(--color-border)] bg-[#090d16] px-4 pt-2 pb-4 space-y-1 max-h-[80vh] overflow-y-auto">
+          <div className="text-[10px] uppercase font-mono text-[var(--color-text-muted)] px-3 pt-1">
+            Navigasi Utama
+          </div>
+          {mainNavItems.map((item) => {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
@@ -185,7 +225,7 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-sm font-mono flex items-center gap-2.5 ${
+                className={`block px-3 py-2 rounded-md text-xs font-mono flex items-center gap-2.5 ${
                   isActive
                     ? "bg-[var(--color-surface-elevated)] text-[var(--color-accent)]"
                     : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
@@ -196,11 +236,34 @@ export function Navbar() {
               </Link>
             );
           })}
+
+          <div className="text-[10px] uppercase font-mono text-[var(--color-text-muted)] px-3 pt-3">
+            Ekosistem & Komunitas
+          </div>
+          {ecosystemItems.map((item) => {
+            const isActive = pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-xs font-mono flex items-center gap-2.5 ${
+                  isActive
+                    ? "bg-[var(--color-surface-elevated)] text-[var(--color-accent)]"
+                    : "text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface)]"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+
           {user?.role === "admin" && (
             <Link
               href="/admin"
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-md text-sm font-mono flex items-center gap-2.5 text-red-400 bg-red-500/10"
+              className="block px-3 py-2 rounded-md text-xs font-mono flex items-center gap-2.5 text-red-400 bg-red-500/10"
             >
               <Lock className="w-4 h-4" />
               Panel Administrator

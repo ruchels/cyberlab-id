@@ -62,6 +62,8 @@ export function CardBody({
   return <div className={`p-5 ${className}`}>{children}</div>;
 }
 
+export const CardContent = CardBody;
+
 export function CardFooter({
   children,
   className = "",

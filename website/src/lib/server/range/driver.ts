@@ -126,7 +126,7 @@ export function executeVirtualCommand(
   let criteriaObj: any = {};
   try {
     criteriaObj = JSON.parse(criteriaJson);
-  } catch {}
+  } catch { }
 
   const parts = trimmed.split(/\s+/);
   const command = parts[0];

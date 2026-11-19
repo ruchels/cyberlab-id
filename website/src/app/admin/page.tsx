@@ -21,10 +21,15 @@ import {
   Sparkles,
   Activity,
   Database,
+  Award,
+  Compass,
+  GitPullRequest,
+  Calendar,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
-type AdminTab = "analytics" | "users" | "ctf" | "range" | "moderation" | "audit" | "readiness";
+type AdminTab = "analytics" | "users" | "ctf" | "range" | "moderation" | "audit" | "readiness" | "ecosystem";
 
 export default function AdminDashboardPage() {
   const { user, isLoading } = useAuth();
@@ -74,6 +79,85 @@ export default function AdminDashboardPage() {
 
   // Moderation state
   const [reports, setReports] = useState<any[]>([]);
+
+  // Ecosystem state
+  const [ecosystemData, setEcosystemData] = useState<any>(null);
+  const [ecoLoading, setEcoLoading] = useState(false);
+  const [ecoActionMsg, setEcoActionMsg] = useState<string | null>(null);
+
+  const fetchEcosystem = async () => {
+    try {
+      setEcoLoading(true);
+      const res = await fetch("/api/admin/ecosystem");
+      if (res.ok) {
+        const json = await res.json();
+        setEcosystemData(json.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setEcoLoading(false);
+    }
+  };
+
+  const handleReviewSubmission = async (submissionId: string, decision: string, feedback: string = "") => {
+    try {
+      const res = await fetch("/api/admin/ecosystem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "review_submission", submissionId, decision, feedback }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEcoActionMsg(`Kontribusi berhasil diubah ke: ${decision}`);
+        fetchEcosystem();
+      } else {
+        alert(data.error || "Gagal memproses review");
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleReviewArticle = async (articleId: string, status: string) => {
+    try {
+      const res = await fetch("/api/admin/ecosystem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "review_article", articleId, status }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEcoActionMsg(`Artikel berhasil diubah ke: ${status}`);
+        fetchEcosystem();
+      } else {
+        alert(data.error || "Gagal memproses review");
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleRevokeCert = async (certId: string) => {
+    const reason = prompt("Masukkan alasan pencabutan sertifikat:");
+    if (!reason) return;
+    try {
+      const res = await fetch("/api/admin/ecosystem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revoke_cert", certId, reason }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEcoActionMsg("Sertifikat berhasil dicabut.");
+        fetchEcosystem();
+      } else {
+        alert(data.error || "Gagal mencabut sertifikat");
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   const fetchAnalytics = async () => {
     try {
@@ -160,6 +244,7 @@ export default function AdminDashboardPage() {
       if (activeTab === "range") fetchRangeSessions();
       if (activeTab === "moderation") fetchReports();
       if (activeTab === "readiness") fetchReadiness();
+      if (activeTab === "ecosystem") fetchEcosystem();
     }
   }, [user, activeTab]);
 
@@ -351,6 +436,16 @@ export default function AdminDashboardPage() {
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" /> Production Readiness
+          </button>
+          <button
+            onClick={() => setActiveTab("ecosystem")}
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              activeTab === "ecosystem"
+                ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            }`}
+          >
+            <GitPullRequest className="w-3.5 h-3.5" /> Ekosistem & Riset
           </button>
         </div>
       </div>
@@ -1112,6 +1207,194 @@ export default function AdminDashboardPage() {
               </div>
             </CardBody>
           </Card>
+        </div>
+      )}
+      {/* Tab 8: Ecosystem & Research */}
+      {activeTab === "ecosystem" && (
+        <div className="space-y-6">
+          {ecoActionMsg && (
+            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono flex items-center justify-between">
+              <span>{ecoActionMsg}</span>
+              <button onClick={() => setEcoActionMsg(null)} className="underline">Tutup</button>
+            </div>
+          )}
+
+          {ecoLoading ? (
+            <div className="py-12 text-center text-xs text-[var(--color-text-muted)]">Memuat data ekosistem...</div>
+          ) : ecosystemData ? (
+            <div className="space-y-8">
+              {/* Contributor Submissions Review */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-mono text-base font-bold text-[var(--color-text)] flex items-center gap-2">
+                        <GitPullRequest className="w-4 h-4 text-[var(--color-accent)]" />
+                        Pengajuan Kontribusi Komunitas ({ecosystemData.submissions?.length || 0})
+                      </h3>
+                      <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        Tinjau modul, lab, tantangan, dan tools yang diajukan oleh pengguna
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                        <tr>
+                          <th className="py-2.5 px-3">Tipe</th>
+                          <th className="py-2.5 px-3">Judul</th>
+                          <th className="py-2.5 px-3">Penulis</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Aksi Moderasi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {ecosystemData.submissions?.length === 0 ? (
+                          <tr><td colSpan={5} className="py-6 text-center text-[var(--color-text-muted)]">Tidak ada pengajuan.</td></tr>
+                        ) : (
+                          ecosystemData.submissions.map((sub: any) => (
+                            <tr key={sub.id} className="hover:bg-white/[0.01]">
+                              <td className="py-2.5 px-3 uppercase text-[10px] text-[var(--color-accent)]">{sub.type}</td>
+                              <td className="py-2.5 px-3 font-semibold max-w-xs truncate">{sub.title}</td>
+                              <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{sub.author_name || sub.author_username}</td>
+                              <td className="py-2.5 px-3">
+                                <Badge variant={sub.status === "published" || sub.status === "approved" ? "accent" : sub.status === "rejected" ? "destructive" : "default"} size="sm">
+                                  {sub.status}
+                                </Badge>
+                              </td>
+                              <td className="py-2.5 px-3 text-right space-x-1.5">
+                                {sub.status !== "published" && (
+                                  <button
+                                    onClick={() => handleReviewSubmission(sub.id, "published", "Disetujui dan dipublikasikan.")}
+                                    className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 text-[10px] font-bold"
+                                  >
+                                    Terbitkan
+                                  </button>
+                                )}
+                                {sub.status !== "rejected" && (
+                                  <button
+                                    onClick={() => handleReviewSubmission(sub.id, "rejected", "Perlu perbaikan konten.")}
+                                    className="px-2 py-1 rounded bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 text-[10px] font-bold"
+                                  >
+                                    Tolak / Revisi
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* Research Articles Review */}
+              <Card>
+                <CardHeader>
+                  <h3 className="font-mono text-base font-bold text-[var(--color-text)] flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-400" />
+                    Artikel Riset & Write-ups ({ecosystemData.articles?.length || 0})
+                  </h3>
+                </CardHeader>
+                <CardBody>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                        <tr>
+                          <th className="py-2.5 px-3">Kategori</th>
+                          <th className="py-2.5 px-3">Judul Artikel</th>
+                          <th className="py-2.5 px-3">Penulis</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {ecosystemData.articles?.map((art: any) => (
+                          <tr key={art.id} className="hover:bg-white/[0.01]">
+                            <td className="py-2.5 px-3 text-[10px] uppercase text-[var(--color-text-muted)]">{art.category}</td>
+                            <td className="py-2.5 px-3 font-semibold">{art.title}</td>
+                            <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{art.author_name}</td>
+                            <td className="py-2.5 px-3">
+                              <Badge variant={art.status === "published" ? "accent" : "secondary"} size="sm">{art.status}</Badge>
+                            </td>
+                            <td className="py-2.5 px-3 text-right space-x-1.5">
+                              {art.status !== "published" ? (
+                                <button
+                                  onClick={() => handleReviewArticle(art.id, "published")}
+                                  className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold"
+                                >
+                                  Publish
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleReviewArticle(art.id, "draft")}
+                                  className="px-2 py-1 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold"
+                                >
+                                  Unpublish
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* Certificates Revocation Management */}
+              <Card>
+                <CardHeader>
+                  <h3 className="font-mono text-base font-bold text-[var(--color-text)] flex items-center gap-2">
+                    <Award className="w-4 h-4 text-amber-400" />
+                    Sertifikat Digital Terbit ({ecosystemData.certificates?.length || 0})
+                  </h3>
+                </CardHeader>
+                <CardBody>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] border-b border-[var(--color-border)] text-[var(--color-text-muted)]">
+                        <tr>
+                          <th className="py-2.5 px-3">ID Sertifikat</th>
+                          <th className="py-2.5 px-3">Nama Penerima</th>
+                          <th className="py-2.5 px-3">Jalur Akademi</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Pencabutan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {ecosystemData.certificates?.map((cert: any) => (
+                          <tr key={cert.id} className="hover:bg-white/[0.01]">
+                            <td className="py-2.5 px-3 font-mono font-bold text-[var(--color-accent)] text-[11px]">{cert.id}</td>
+                            <td className="py-2.5 px-3 font-semibold">{cert.user_display_name}</td>
+                            <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{cert.path_title}</td>
+                            <td className="py-2.5 px-3">
+                              <Badge variant={cert.status === "valid" ? "accent" : "destructive"} size="sm">{cert.status}</Badge>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {cert.status === "valid" ? (
+                                <button
+                                  onClick={() => handleRevokeCert(cert.id)}
+                                  className="px-2 py-1 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold hover:bg-rose-500/30"
+                                >
+                                  Cabut Sertifikat
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-rose-400 font-bold">Dicabut</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
