@@ -126,6 +126,23 @@
 
 </td>
 </tr>
+<tr>
+<td colspan="2">
+
+### 🛡️ Cyber Range & Virtual Lab Infrastructure (`/range`) — *New in Phase 4*
+- **Dual-Driver Isolation Engine**: Seamless auto-detection between production **Docker Container Daemon** (OCI container sandboxing with `read-only rootfs`, `cap-drop ALL`, CPU/Memory cgroups) and the **Isolated Embedded Lab Engine** (zero host execution, in-memory virtual state).
+- **Session Lifecycle & Sweeper**: Unique session IDs, live expiration countdown timer, automatic session cleanup, and concurrency bounds (1 concurrent session per user).
+- **Five Interactive Range Environments**:
+  1. **Linux System Hardening Terminal (`tpl-linux-core`)**: Monospace terminal emulator, SUID binary inspection, file permission auditing (`chmod 600`), and stateful checkpoints.
+  2. **Network Topology & Gateway Routing (`tpl-net-topo`)**: Interactive SVG network canvas, node IP/gateway configuration, and animated packet trace hop routing.
+  3. **OWASP Web Security Sandbox (`tpl-web-owasp`)**: SQL Injection (classic/bypass vs parameterized AST queries), reflected/stored XSS, and directory traversal with instant mitigation.
+  4. **Disk & Log Forensics Range (`tpl-forensics-disk`)**: SHA-256 cryptographic hash integrity, Magic Bytes hex extension spoofing detector, and multi-vector attack timeline reconstructor.
+  5. **x86 Reverse Engineering Stepper (`tpl-reverse-x86`)**: Hex strings extraction, x86 assembly step execution (EAX & Zero Flag), crackme serial validator, and opcode branching patcher.
+- **Deterministic Server-Side Verification**: Checkpoints are verified server-side with anti-tamper completion tokens before XP or achievement awards.
+- Complete documentation: [`CYBER_RANGE_ARCHITECTURE.md`](CYBER_RANGE_ARCHITECTURE.md).
+
+</td>
+</tr>
 </table>
 
 ---

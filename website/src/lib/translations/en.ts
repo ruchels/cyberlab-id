@@ -2,6 +2,7 @@ export const en = {
   nav: {
     home: "Home",
     learning: "Learning",
+    range: "Cyber Range",
     labs: "Interactive Labs",
     tools: "Security Tools",
     challenges: "CTF",

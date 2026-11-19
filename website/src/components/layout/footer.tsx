@@ -51,6 +51,14 @@ export function Footer() {
               </li>
               <li>
                 <Link
+                  href="/range"
+                  className="hover:text-[var(--color-accent)] transition-colors"
+                >
+                  {(t.nav as any).range || "Cyber Range"}
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/labs"
                   className="hover:text-[var(--color-accent)] transition-colors"
                 >

@@ -19,10 +19,11 @@ import {
   Lock,
   ArrowRight,
   Sparkles,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
-type AdminTab = "analytics" | "users" | "ctf" | "moderation" | "audit";
+type AdminTab = "analytics" | "users" | "ctf" | "range" | "moderation" | "audit";
 
 export default function AdminDashboardPage() {
   const { user, isLoading } = useAuth();
@@ -31,6 +32,9 @@ export default function AdminDashboardPage() {
   // Analytics state
   const [analytics, setAnalytics] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
+
+  // Range sessions state
+  const [rangeSessions, setRangeSessions] = useState<any[]>([]);
 
   // Users state
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -104,11 +108,40 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const fetchRangeSessions = async () => {
+    try {
+      const res = await fetch("/api/admin/range/sessions");
+      if (res.ok) {
+        const data = await res.json();
+        setRangeSessions(data.sessions || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleTerminateRangeSession = async (sessionId: string) => {
+    if (!confirm("Hentikan paksa sesi Cyber Range pengguna ini?")) return;
+    try {
+      const res = await fetch("/api/admin/range/sessions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, action: "terminate" }),
+      });
+      if (res.ok) {
+        fetchRangeSessions();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     if (user?.role === "admin") {
       if (activeTab === "analytics" || activeTab === "audit") fetchAnalytics();
       if (activeTab === "users") fetchUsers();
       if (activeTab === "ctf") fetchChallenges();
+      if (activeTab === "range") fetchRangeSessions();
       if (activeTab === "moderation") fetchReports();
     }
   }, [user, activeTab]);
@@ -261,6 +294,16 @@ export default function AdminDashboardPage() {
             }`}
           >
             <Flag className="w-3.5 h-3.5" /> Tantangan CTF
+          </button>
+          <button
+            onClick={() => setActiveTab("range")}
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              activeTab === "range"
+                ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" /> Cyber Range
           </button>
           <button
             onClick={() => setActiveTab("moderation")}
@@ -649,7 +692,89 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Tab 4: Moderation */}
+      {/* Tab 4: Cyber Range Management */}
+      {activeTab === "range" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-[var(--color-text)]">
+                Manajemen Sesi Cyber Range ({rangeSessions.length})
+              </h2>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Pantau seluruh sesi lingkungan lab virtual pengguna, masa aktif instance, dan alokasi sumber daya.
+              </p>
+            </div>
+            <Button onClick={fetchRangeSessions} variant="outline" size="sm" className="text-xs">
+              Segarkan Sesi
+            </Button>
+          </div>
+
+          <Card className="border-[var(--color-border)]">
+            <CardBody className="p-0">
+              <div className="overflow-x-auto text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-[var(--color-surface-elevated)] border-b border-[var(--color-border-subtle)] text-[11px] text-[var(--color-text-muted)] uppercase">
+                    <tr>
+                      <th className="py-3 px-4">Pengguna</th>
+                      <th className="py-3 px-4">Template Lab</th>
+                      <th className="py-3 px-4">Kategori</th>
+                      <th className="py-3 px-4">Mode</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">IP Sesi</th>
+                      <th className="py-3 px-4">Waktu Mulai</th>
+                      <th className="py-3 px-4 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                    {rangeSessions.map((s) => (
+                      <tr key={s.id} className="hover:bg-[var(--color-surface-elevated)]">
+                        <td className="py-3 px-4 font-bold text-[var(--color-text)]">
+                          {s.display_name} <span className="text-[10px] text-[var(--color-text-muted)]">(@{s.username})</span>
+                        </td>
+                        <td className="py-3 px-4">{s.template_title}</td>
+                        <td className="py-3 px-4 text-[var(--color-accent)]">{s.template_category}</td>
+                        <td className="py-3 px-4 font-mono uppercase text-[10px]">{s.mode}</td>
+                        <td className="py-3 px-4">
+                          <Badge
+                            variant={
+                              s.status === "running"
+                                ? "accent"
+                                : s.status === "completed"
+                                ? "success"
+                                : "default"
+                            }
+                            size="sm"
+                          >
+                            {s.status.toUpperCase()}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-[var(--color-text-muted)]">{s.ip_address}</td>
+                        <td className="py-3 px-4 text-[var(--color-text-muted)]">
+                          {new Date(s.started_at).toLocaleTimeString("id-ID")}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {s.status === "running" && (
+                            <Button
+                              onClick={() => handleTerminateRangeSession(s.id)}
+                              variant="outline"
+                              size="sm"
+                              className="text-[11px] text-red-400 border-red-500/30 hover:bg-red-500/10"
+                            >
+                              Hentikan
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
+
+      {/* Tab 5: Moderation */}
       {activeTab === "moderation" && (
         <div className="space-y-4">
           <div>

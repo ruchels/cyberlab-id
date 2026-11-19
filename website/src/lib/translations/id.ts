@@ -2,6 +2,7 @@ export const id = {
   nav: {
     home: "Beranda",
     learning: "Pembelajaran",
+    range: "Cyber Range",
     labs: "Praktikum Lab",
     tools: "Security Tools",
     challenges: "CTF",

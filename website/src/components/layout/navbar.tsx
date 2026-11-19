@@ -23,6 +23,7 @@ import {
   Bell,
   User as UserIcon,
   Lock,
+  Activity,
 } from "lucide-react";
 import { GithubIcon, Badge } from "@/components/ui";
 
@@ -35,6 +36,7 @@ export function Navbar() {
   const navItems = [
     { href: "/", label: t.nav.home, icon: Terminal },
     { href: "/learning", label: t.nav.learning, icon: BookOpen },
+    { href: "/range", label: (t.nav as any).range || "Cyber Range", icon: Activity },
     { href: "/labs", label: t.nav.labs, icon: FlaskConical },
     { href: "/tools", label: t.nav.tools, icon: Wrench },
     { href: "/challenges", label: t.nav.challenges, icon: Trophy },

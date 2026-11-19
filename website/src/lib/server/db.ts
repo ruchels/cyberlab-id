@@ -172,6 +172,53 @@ function initSchema(db: DatabaseSync) {
       details TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS lab_templates (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL,
+      difficulty TEXT NOT NULL,
+      duration_minutes INTEGER NOT NULL DEFAULT 60,
+      xp_reward INTEGER NOT NULL DEFAULT 50,
+      cpu_limit TEXT NOT NULL DEFAULT '0.5 core',
+      memory_limit TEXT NOT NULL DEFAULT '256 MB',
+      storage_limit TEXT NOT NULL DEFAULT '512 MB',
+      image_name TEXT NOT NULL DEFAULT 'cyberlab/sandbox:latest',
+      instructions TEXT NOT NULL,
+      verification_criteria TEXT NOT NULL,
+      is_published INTEGER NOT NULL DEFAULT 1,
+      version TEXT NOT NULL DEFAULT '1.0.0',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS lab_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      template_id TEXT NOT NULL REFERENCES lab_templates(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      mode TEXT NOT NULL DEFAULT 'embedded',
+      terminal_endpoint TEXT DEFAULT '',
+      ip_address TEXT DEFAULT '10.240.0.10',
+      started_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      completed_at TEXT,
+      checkpoints_state TEXT NOT NULL DEFAULT '{}',
+      terminal_history TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS lab_completions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      template_id TEXT NOT NULL REFERENCES lab_templates(id) ON DELETE CASCADE,
+      session_id TEXT NOT NULL REFERENCES lab_sessions(id) ON DELETE CASCADE,
+      xp_awarded INTEGER NOT NULL,
+      evidence_summary TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      UNIQUE(user_id, template_id)
+    );
   `);
 }
 
@@ -464,5 +511,183 @@ function seedInitialData(db: DatabaseSync) {
       now,
       now
     );
+  }
+
+  // 5. Seed Phase 4 Achievements
+  const phase4Achievements = [
+    { code: "range-commander", title: "Range Commander", desc: "Selesaikan minimal 3 praktikum lingkungan Cyber Range terisolasi.", icon: "Shield", cat: "general", xp: 100 },
+    { code: "network-architect", title: "Network Architect", desc: "Selesaikan praktikum topologi dan konfigurasi routing jaringan di Cyber Range.", icon: "Network", cat: "network", xp: 60 },
+    { code: "appsec-breaker", title: "AppSec Breaker", desc: "Eksploitasi dan remediasi kerentanan OWASP Web Range secara aman.", icon: "Globe", cat: "web", xp: 60 },
+    { code: "forensics-investigator", title: "Forensic Investigator", desc: "Analisis dan pulihkan barang bukti digital pada lab forensik disk.", icon: "Binary", cat: "forensics", xp: 60 },
+    { code: "binary-analyst", title: "Binary Analyst", desc: "Selesaikan analisis aliran kontrol dan disassembly pada lab Reverse Engineering.", icon: "Cpu", cat: "reverse", xp: 60 },
+  ];
+
+  const insertAch = db.prepare(`
+    INSERT OR IGNORE INTO achievements (id, code, title, description, icon, category, xp_reward)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const a of phase4Achievements) {
+    insertAch.run(`ach_${a.code}`, a.code, a.title, a.desc, a.icon, a.cat, a.xp);
+  }
+
+  // 6. Seed Official Lab Templates
+  const checkTemplates = db.prepare("SELECT count(*) as count FROM lab_templates").get() as { count: number };
+  if (checkTemplates.count === 0) {
+    const now = new Date().toISOString();
+    const insertTemplate = db.prepare(`
+      INSERT INTO lab_templates (
+        id, title, description, category, difficulty, duration_minutes, xp_reward,
+        cpu_limit, memory_limit, storage_limit, image_name, instructions,
+        verification_criteria, is_published, version, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '1.0.0', ?, ?)
+    `);
+
+    const templates = [
+      {
+        id: "tpl-linux-core",
+        title: "Linux Command Line & Privilege Audit Lab",
+        description: "Lingkungan terminal Linux interaktif untuk menguji navigasi direktori, audit izin berkas chmod/chown, pelacakan proses aktif (ps/top), dan identifikasi file SUID berbahaya.",
+        category: "Linux",
+        difficulty: "Beginner",
+        duration: 60,
+        xp: 60,
+        cpu: "0.5 core",
+        memory: "256 MB",
+        storage: "512 MB",
+        image: "cyberlab/linux-base:1.0",
+        instructions: "1. Jalankan `pwd` dan `ls -la` untuk meninjau struktur direktori.\n2. Temukan file rahasia di dalam direktori `/opt/secret`.\n3. Periksa izin akses file tersebut dan ubah menjadi 600 menggunakan `chmod`.\n4. Jalankan perintah `find / -perm -4000 2>/dev/null` untuk mengaudit SUID binary.",
+        criteria: JSON.stringify({
+          checkpoints: [
+            { id: "chk_ls", description: "Inspeksi direktori /opt/secret", command_trigger: "ls /opt/secret" },
+            { id: "chk_chmod", description: "Perketat izin berkas ke 600", command_trigger: "chmod 600 /opt/secret/creds.txt" },
+            { id: "chk_suid", description: "Audit berkas berizin SUID", command_trigger: "find / -perm -4000" }
+          ],
+          completion_token: "RANGE{linux_privilege_audit_completed}"
+        }),
+      },
+      {
+        id: "tpl-net-topo",
+        title: "Network Topology & Packet Routing Simulation",
+        description: "Laboratorium simulasi topologi jaringan multi-node (Client, Router Gateway, DNS Server, Web Server). Konfigurasi addressing IPv4, Subnet Mask, Gateway, dan analisis alur paket ICMP/TCP.",
+        category: "Networking",
+        difficulty: "Intermediate",
+        duration: 60,
+        xp: 75,
+        cpu: "0.5 core",
+        memory: "256 MB",
+        storage: "256 MB",
+        image: "cyberlab/net-sim:1.0",
+        instructions: "1. Konfigurasikan IP Client Host ke 192.168.1.15/24 dengan Gateway 192.168.1.1.\n2. Tambahkan rute statis pada Router menuju subnet Server 10.0.0.0/24.\n3. Uji konektivitas hop-by-hop menggunakan simulasi ping dan inspeksi alur paket.",
+        criteria: JSON.stringify({
+          checkpoints: [
+            { id: "chk_ip", description: "Konfigurasi antarmuka eth0 client" },
+            { id: "chk_gw", description: "Tetapkan default gateway router" },
+            { id: "chk_ping", description: "Verifikasi alur paket ICMP end-to-end" }
+          ],
+          completion_token: "RANGE{network_routing_end_to_end_verified}"
+        }),
+      },
+      {
+        id: "tpl-web-owasp",
+        title: "Web Security Range: OWASP Top 10 Sandbox",
+        description: "Aplikasi web sintetis yang rentan secara terisolasi untuk mempraktikkan SQL Injection (Boolean Auth Bypass), Cross-Site Scripting (XSS PoC), dan Path Traversal dengan komparasi patch aman.",
+        category: "Web Security",
+        difficulty: "Intermediate",
+        duration: 75,
+        xp: 80,
+        cpu: "1.0 core",
+        memory: "512 MB",
+        storage: "512 MB",
+        image: "cyberlab/web-vuln:1.0",
+        instructions: "1. Buka antarmuka aplikasi web target pada port sandbox.\n2. Uji payload SQL Injection `' OR '1'='1` pada login form.\n3. Masukkan payload XSS `<script>alert('CYBERLAB')</script>` pada kolom ulasan tamu.\n4. Amati respons sistem dan analisis kode remediasi pertahanan.",
+        criteria: JSON.stringify({
+          checkpoints: [
+            { id: "chk_sqli", description: "Eksploitasi celah autentikasi SQLi" },
+            { id: "chk_xss", description: "Deteksi refleksi payload script XSS" },
+            { id: "chk_traversal", description: "Uji batasan path traversal ../" }
+          ],
+          completion_token: "RANGE{appsec_owasp_remediation_mastered}"
+        }),
+      },
+      {
+        id: "tpl-forensics-disk",
+        title: "Digital Forensics: Evidence Carving & Timeline Lab",
+        description: "Investigasi digital terhadap image berkas barang bukti. Lakukan ekstraksi metadata EXIF, identifikasi anomali ekstensi berkas palsu, dan rekonstruksi timeline log insiden.",
+        category: "Digital Forensics",
+        difficulty: "Intermediate",
+        duration: 60,
+        xp: 70,
+        cpu: "0.5 core",
+        memory: "512 MB",
+        storage: "1 GB",
+        image: "cyberlab/forensics-suite:1.0",
+        instructions: "1. Verifikasi nilai hash SHA-256 berkas bukti untuk menjamin Chain of Custody.\n2. Gunakan Hex Inspector untuk mendeteksi berkas biner PE/EXE yang disamarkan sebagai PDF.\n3. Susun urutan kronologis kejadian berdasarkan entri access.log server web.",
+        criteria: JSON.stringify({
+          checkpoints: [
+            { id: "chk_hash", description: "Verifikasi hash integritas barang bukti" },
+            { id: "chk_magic", description: "Identifikasi magic bytes file tersamar" },
+            { id: "chk_log", description: "Saring entri log akses serangan" }
+          ],
+          completion_token: "RANGE{forensic_chain_of_custody_intact}"
+        }),
+      },
+      {
+        id: "tpl-reverse-x86",
+        title: "Reverse Engineering: x86 Binary Disassembly Lab",
+        description: "Analisis berkas binary ELF/PE compiled. Lacak instruksi assembly x86_64, evaluasi alur percabangan kondisional (CMP / JE / JNE), dan pahami mekanisme proteksi software crackme.",
+        category: "Reverse Engineering",
+        difficulty: "Advanced",
+        duration: 90,
+        xp: 90,
+        cpu: "0.5 core",
+        memory: "512 MB",
+        storage: "512 MB",
+        image: "cyberlab/reverse-lab:1.0",
+        instructions: "1. Ekstrak string teks menggunakan fitur String Inspector.\n2. Lacak register CPU EAX dan Zero Flag (ZF) pada simulator instruksi.\n3. Hitung serial kunci matematis atau lakukan byte patch opcode lompatan percabangan.",
+        criteria: JSON.stringify({
+          checkpoints: [
+            { id: "chk_strings", description: "Ekstraksi string dan simbol biner" },
+            { id: "chk_registers", description: "Pelacakan alur register CPU x86" },
+            { id: "chk_patch", description: "Bypass validasi serial crackme" }
+          ],
+          completion_token: "RANGE{x86_reverse_binary_disassembly_solved}"
+        }),
+      },
+    ];
+
+    for (const t of templates) {
+      insertTemplate.run(
+        t.id, t.title, t.description, t.category, t.difficulty, t.duration, t.xp,
+        t.cpu, t.memory, t.storage, t.image, t.instructions, t.criteria, now, now
+      );
+    }
+  }
+}
+
+export function logAudit(actorId: string, action: string, targetType: string, targetId: string, details: string) {
+  try {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const id = `audit_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    db.prepare(`
+      INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, details, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(id, actorId, action, targetType, targetId, details, now);
+  } catch (err) {
+    console.error("Failed to write audit log:", err);
+  }
+}
+
+export function createNotification(userId: string, title: string, message: string, type: "info" | "achievement" | "ctf" | "comment" | "admin", link = "") {
+  try {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const id = `notif_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+    db.prepare(`
+      INSERT INTO notifications (id, user_id, title, message, type, link, is_read, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+    `).run(id, userId, title, message, type, link, now);
+  } catch (err) {
+    console.error("Failed to create notification:", err);
   }
 }

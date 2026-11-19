@@ -1,0 +1,39 @@
+services:
+  cyberlab-app:
+    build:
+      context: ../../website
+      dockerfile: Dockerfile
+    image: cyberlab-id/web:latest
+    container_name: cyberlab-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - cyberlab-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - cyberlab-net
+
+  range-janitor:
+    image: alpine:3.19
+    container_name: cyberlab-range-janitor
+    restart: unless-stopped
+    command: >
+      sh -c "while true; do
+        wget -qO- --post-data '' http://cyberlab-app:3000/api/range/health || true;
+        sleep 60;
+      done"
+    depends_on:
+      - cyberlab-app
+    networks:
+      - cyberlab-net
+
+networks:
+  cyberlab-net:
+    driver: bridge
+
+volumes:
+  cyberlab-data:

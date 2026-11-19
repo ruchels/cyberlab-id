@@ -1,7 +1,7 @@
-import { getDb } from "@/lib/server/db";
+import { getDb } from "./db.ts";
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
-export { checkRateLimit } from "@/lib/server/rate-limit";
+export { checkRateLimit } from "./rate-limit.ts";
 
 export interface User {
   id: string;
@@ -115,30 +115,4 @@ export async function requireAdmin(request?: Request): Promise<User> {
   return user;
 }
 
-export function logAudit(actorId: string, action: string, targetType: string, targetId: string, details: string) {
-  try {
-    const db = getDb();
-    const now = new Date().toISOString();
-    const id = `audit_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
-    db.prepare(`
-      INSERT INTO audit_logs (id, actor_id, action, target_type, target_id, details, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(id, actorId, action, targetType, targetId, details, now);
-  } catch (err) {
-    console.error("Failed to write audit log:", err);
-  }
-}
-
-export function createNotification(userId: string, title: string, message: string, type: "info" | "achievement" | "ctf" | "comment" | "admin", link = "") {
-  try {
-    const db = getDb();
-    const now = new Date().toISOString();
-    const id = `notif_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
-    db.prepare(`
-      INSERT INTO notifications (id, user_id, title, message, type, link, is_read, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-    `).run(id, userId, title, message, type, link, now);
-  } catch (err) {
-    console.error("Failed to create notification:", err);
-  }
-}
+export { logAudit, createNotification } from "./db.ts";
