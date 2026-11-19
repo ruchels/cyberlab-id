@@ -1,0 +1,12 @@
+{
+  "id": "subnet-sleuth",
+  "title": "Subnet Sleuth: Host Capacity",
+  "category": "networking",
+  "difficulty": "intermediate",
+  "points": 75,
+  "description": "Departemen IT perusahaan menetapkan subnet blok '172.16.50.0/22'. Berapa jumlah pasti host IP yang dapat digunakan secara valid (usable hosts) oleh komputer klien?",
+  "hint": "Panjang IPv4 adalah 32 bit. Dengan prefix /22, berapa sisa bit untuk host? Gunakan rumus 2^h - 2 (dikurangi alamat Network dan Broadcast).",
+  "flag": "CYBERLAB{1022}",
+  "acceptedFlags": ["CYBERLAB{1022}", "1022"],
+  "solution": "Host bits = 32 - 22 = 10 bits. Total alamat = 2^10 = 1024. Usable hosts = 1024 - 2 = 1022 alamat (karena network address dan broadcast address dicadangkan)."
+}

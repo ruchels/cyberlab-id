@@ -1,0 +1,12 @@
+{
+  "id": "xor-key-hunt",
+  "title": "XOR Key Hunt",
+  "category": "cryptography",
+  "difficulty": "intermediate",
+  "points": 100,
+  "description": "Sebuah payload malware di-obfuscate menggunakan single-byte XOR key. Hex stream yang ditemukan: '2a 20 2b 2c 3b 25 28 34 20 3a 36 28 3e 2c 24 2c'. Dekripsi pesan bahasa Inggris tersebut!",
+  "hint": "Coba gunakan brute-force single byte (0 s.d 255) atau cari karakter pertama yang seharusnya berupa flag pembuka 'C'. Jika 0x2A XOR Key = 'C' (0x43), maka Key = 0x2A XOR 0x43 = 0x69.",
+  "flag": "CYBERLAB{CYBERLAB_SECRET}",
+  "acceptedFlags": ["CYBERLAB{CYBERLAB_SECRET}", "CYBERLAB_SECRET"],
+  "solution": "Key yang digunakan adalah 0x69 (desimal 105 atau karakter 'i'). Melakukan operasi XOR pada setiap byte menghasilkan pesan 'CYBERLAB_SECRET'."
+}

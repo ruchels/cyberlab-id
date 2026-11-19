@@ -1,0 +1,12 @@
+{
+  "id": "file-identity",
+  "title": "File Identity & Magic Bytes",
+  "category": "forensics",
+  "difficulty": "beginner",
+  "points": 50,
+  "description": "Sebuah file rusak tidak memiliki ekstensi, namun 8 byte pertamanya terbaca di hex editor: '89 50 4E 47 0D 0A 1A 0A'. Format file apakah ini?",
+  "hint": "Perhatikan karakter ASCII dari byte 50 4E 47 ('P', 'N', 'G'). Format gambar lossless web populer.",
+  "flag": "CYBERLAB{PNG}",
+  "acceptedFlags": ["CYBERLAB{PNG}", "PNG", "png"],
+  "solution": "Magic bytes 89 50 4E 47 0D 0A 1A 0A adalah tanda tangan resmi untuk file citra PNG (Portable Network Graphics)."
+}

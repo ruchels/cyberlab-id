@@ -1,0 +1,12 @@
+{
+  "id": "caesar-says-hello",
+  "title": "Caesar Says Hello",
+  "category": "cryptography",
+  "difficulty": "beginner",
+  "points": 50,
+  "description": "Julius Caesar mengirimkan ciphertext rahasia: 'Fdhvdu flskhu lv ixq'. Bisakah Anda memecahkan pesan asli dan mengamankan flag-nya?",
+  "hint": "Gunakan teknik geser mundur alfabet (Caesar Cipher Shift 3) atau gunakan CyberLab-ID Cipher Toolkit.",
+  "flag": "CYBERLAB{Caesar cipher is fun}",
+  "acceptedFlags": ["CYBERLAB{Caesar cipher is fun}", "Caesar cipher is fun"],
+  "solution": "Setiap huruf digeser mundur sebanyak 3 langkah: F->C, d->a, h->e, v->s, d->a, u->r. Plaintext yang dihasilkan adalah 'Caesar cipher is fun'."
+}

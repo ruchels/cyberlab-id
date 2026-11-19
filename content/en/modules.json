@@ -1,0 +1,108 @@
+{
+  "modules": [
+    {
+      "id": "linux",
+      "title": "Linux & System Administration",
+      "description": "Foundations of Linux operating system, shell navigation, permissions, process management, Bash scripting, and defensive server hardening.",
+      "difficulty": "beginner",
+      "level": "Beginner to Intermediate",
+      "topicsCount": 7,
+      "topics": [
+        { "id": "linux-fundamentals", "title": "Linux Fundamentals & OS Architecture", "order": 1, "status": "ready" },
+        { "id": "linux-command-line", "title": "Terminal Navigation & Command Line Mastery", "order": 2, "status": "coming_soon" },
+        { "id": "file-permissions", "title": "File Permissions, Chmod & Chown Security", "order": 3, "status": "coming_soon" },
+        { "id": "user-group-management", "title": "User, Group & Sudoers Privilege Management", "order": 4, "status": "coming_soon" },
+        { "id": "process-management", "title": "Process Management, Daemons & Signals", "order": 5, "status": "coming_soon" },
+        { "id": "bash-scripting", "title": "Bash Scripting Automation for Sysadmins", "order": 6, "status": "coming_soon" },
+        { "id": "system-hardening", "title": "Linux Server Hardening & Security Auditing", "order": 7, "status": "coming_soon" }
+      ]
+    },
+    {
+      "id": "networking",
+      "title": "Computer Networking",
+      "description": "Deep dive into network protocols, OSI and TCP/IP stack, IPv4/IPv6 addressing, subnetting, DNS/DHCP, firewall filtering, and packet triage.",
+      "difficulty": "beginner",
+      "level": "Beginner to Intermediate",
+      "topicsCount": 8,
+      "topics": [
+        { "id": "networking-fundamentals", "title": "Networking Fundamentals & Topologies", "order": 1, "status": "ready" },
+        { "id": "osi-tcp-ip", "title": "7-Layer OSI Model & TCP/IP Architecture", "order": 2, "status": "coming_soon" },
+        { "id": "ip-addressing-subnetting", "title": "IPv4 Addressing, CIDR & Subnetting", "order": 3, "status": "coming_soon" },
+        { "id": "dns-dhcp", "title": "Core Infrastructure: DNS & DHCP", "order": 4, "status": "coming_soon" },
+        { "id": "routing-switching", "title": "Routing, Switching & VLAN Segmentation", "order": 5, "status": "coming_soon" },
+        { "id": "firewall-acl", "title": "Firewalls, IPTables & Security ACLs", "order": 6, "status": "coming_soon" },
+        { "id": "packet-analysis", "title": "Packet Analysis with Wireshark & Tcpdump", "order": 7, "status": "coming_soon" },
+        { "id": "network-troubleshooting", "title": "Network Troubleshooting & Diagnostics", "order": 8, "status": "coming_soon" }
+      ]
+    },
+    {
+      "id": "web-security",
+      "title": "Web Application Security",
+      "description": "Exploration of modern web architecture, HTTP/HTTPS security headers, OWASP Top 10 vulnerabilities, authentication flaw mitigations.",
+      "difficulty": "intermediate",
+      "level": "Intermediate",
+      "topicsCount": 8,
+      "topics": [
+        { "id": "http-https", "title": "HTTP Protocols, HTTPS & Security Headers", "order": 1, "status": "ready" },
+        { "id": "authentication-authorization", "title": "Authentication, Session & JWT Security", "order": 2, "status": "coming_soon" },
+        { "id": "sql-injection", "title": "SQL Injection (SQLi) & Prepared Statements", "order": 3, "status": "coming_soon" },
+        { "id": "xss", "title": "Cross-Site Scripting (Stored, Reflected & DOM XSS)", "order": 4, "status": "coming_soon" },
+        { "id": "csrf", "title": "Cross-Site Request Forgery (CSRF) & SameSite", "order": 5, "status": "coming_soon" },
+        { "id": "idor", "title": "Insecure Direct Object References (IDOR)", "order": 6, "status": "coming_soon" },
+        { "id": "security-headers", "title": "Content Security Policy (CSP) & Defense-in-Depth", "order": 7, "status": "coming_soon" },
+        { "id": "owasp-top-10", "title": "Comprehensive Study of OWASP Top 10", "order": 8, "status": "coming_soon" }
+      ]
+    },
+    {
+      "id": "cryptography",
+      "title": "Cryptography & Data Protection",
+      "description": "Theoretical and applied cryptography: encoding vs encryption vs hashing, symmetric and asymmetric ciphers, and RSA mathematics.",
+      "difficulty": "intermediate",
+      "level": "Beginner to Intermediate",
+      "topicsCount": 8,
+      "topics": [
+        { "id": "encoding-encryption-hashing", "title": "Encoding vs Encryption vs Hashing", "order": 1, "status": "ready" },
+        { "id": "caesar-cipher", "title": "Caesar Cipher & Letter Frequency Analysis", "order": 2, "status": "coming_soon" },
+        { "id": "xor-cipher", "title": "XOR Bitwise Cipher & Stream Ciphers", "order": 3, "status": "coming_soon" },
+        { "id": "base64", "title": "Base64 & Binary Data Representation", "order": 4, "status": "coming_soon" },
+        { "id": "hash-functions", "title": "Cryptographic Hash Functions (MD5, SHA-256, Bcrypt)", "order": 5, "status": "coming_soon" },
+        { "id": "symmetric-encryption", "title": "Symmetric Encryption (AES-GCM & ChaCha20)", "order": 6, "status": "coming_soon" },
+        { "id": "asymmetric-encryption", "title": "Asymmetric Encryption & Public Key Infrastructure", "order": 7, "status": "coming_soon" },
+        { "id": "rsa-fundamentals", "title": "RSA Mathematics & Digital Key Operations", "order": 8, "status": "coming_soon" }
+      ]
+    },
+    {
+      "id": "digital-forensics",
+      "title": "Digital Forensics & Incident Response",
+      "description": "Chain of custody principles, filesystem triage, file signatures, EXIF metadata extraction, audit log correlation, and memory forensics.",
+      "difficulty": "intermediate",
+      "level": "Intermediate",
+      "topicsCount": 7,
+      "topics": [
+        { "id": "digital-evidence", "title": "Digital Evidence & Chain of Custody", "order": 1, "status": "coming_soon" },
+        { "id": "file-systems", "title": "Filesystem Structures (Ext4, NTFS, FAT32)", "order": 2, "status": "coming_soon" },
+        { "id": "file-signatures", "title": "File Signatures & Binary Headers", "order": 3, "status": "coming_soon" },
+        { "id": "metadata-analysis", "title": "Metadata Analysis & Digital Footprints", "order": 4, "status": "coming_soon" },
+        { "id": "file-recovery", "title": "File Carving & Deleted Data Recovery", "order": 5, "status": "coming_soon" },
+        { "id": "log-analysis", "title": "Security Log Analysis (Auth, Web, Syslog)", "order": 6, "status": "coming_soon" },
+        { "id": "memory-forensics", "title": "Memory Forensics Fundamentals with Volatility", "order": 7, "status": "coming_soon" }
+      ]
+    },
+    {
+      "id": "reverse-engineering",
+      "title": "Reverse Engineering & Binary Analysis",
+      "description": "Dissecting executable binaries, x86/x64 assembly foundations, static analysis, dynamic debugging, and PE/ELF file format internals.",
+      "difficulty": "advanced",
+      "level": "Intermediate to Advanced",
+      "topicsCount": 6,
+      "topics": [
+        { "id": "binary-fundamentals", "title": "Binary Foundations & Machine Representation", "order": 1, "status": "coming_soon" },
+        { "id": "assembly-intro", "title": "CPU Registers & x86/x64 Assembly Introduction", "order": 2, "status": "coming_soon" },
+        { "id": "static-analysis", "title": "Static Analysis with Strings, Ghidra & IDA", "order": 3, "status": "coming_soon" },
+        { "id": "dynamic-analysis", "title": "Dynamic Analysis with GDB & Debuggers", "order": 4, "status": "coming_soon" },
+        { "id": "executable-analysis", "title": "Deconstructing PE & ELF Executables", "order": 5, "status": "coming_soon" },
+        { "id": "basic-re-challenges", "title": "Hands-on Crackme Challenges", "order": 6, "status": "coming_soon" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "hash-match",
+  "title": "Hash Signature Identifier",
+  "category": "cryptography",
+  "difficulty": "beginner",
+  "points": 50,
+  "description": "Seorang analis menemukan nilai hash 'a59f94ef98caeb4cac0c900c2fa730a6' yang berasal dari kata 'cyberlab'. Algoritma hash apa yang menghasilkan digest sepanjang 32 karakter hexadecimal ini?",
+  "hint": "Hitung jumlah karakter hex (32 karakter * 4 bit = 128 bit). Algoritma legendaris karya Ron Rivest dari tahun 1991.",
+  "flag": "CYBERLAB{MD5}",
+  "acceptedFlags": ["CYBERLAB{MD5}", "MD5", "md5"],
+  "solution": "Output memiliki panjang 32 digit heksadesimal yang setara dengan 128 bit. Ini adalah karakteristik khas dari algoritma MD5 (Message Digest 5)."
+}

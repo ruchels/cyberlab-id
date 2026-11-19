@@ -1,0 +1,12 @@
+{
+  "id": "base64-basics",
+  "title": "Base64 Encoding Basics",
+  "category": "cryptography",
+  "difficulty": "beginner",
+  "points": 25,
+  "description": "Seorang sysadmin mencurigai string berikut di file konfigurasi: 'Q3liZXJMYWItSUQ='. Temukan data aslinya!",
+  "hint": "Ingat bahwa Base64 adalah skema encoding biner-ke-teks dengan karakter padding '=', bukan algoritma enkripsi rahasia.",
+  "flag": "CYBERLAB{CyberLab-ID}",
+  "acceptedFlags": ["CYBERLAB{CyberLab-ID}", "CyberLab-ID"],
+  "solution": "Lakukan decode Base64 menggunakan terminal (`echo 'Q3liZXJMYWItSUQ=' | base64 -d`) atau gunakan Cipher Toolkit CyberLab-ID. Hasil aslinya adalah 'CyberLab-ID'."
+}
