@@ -32,8 +32,8 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
-      "font-src 'self' data:",
-      "connect-src 'self'",
+      "font-src 'self' data: https:",
+      "connect-src 'self' ws: wss: http: https:",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -42,6 +42,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    rules: {
+      "*.css": {
+        loaders: ["@tailwindcss/turbopack"],
+      },
+    },
+  },
   output: "standalone",
   images: {
     unoptimized: true,
