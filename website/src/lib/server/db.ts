@@ -845,6 +845,183 @@ function initSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_inst_certs_inst ON institution_certificates(institution_id, user_id);
     CREATE INDEX IF NOT EXISTS idx_inst_certs_hash ON institution_certificates(verification_hash);
     CREATE INDEX IF NOT EXISTS idx_inst_audit_inst ON institution_audit_logs(institution_id, timestamp DESC);
+
+    -- Phase 10: Cyber Defense, Security Operations (SOC) & Incident Response
+    CREATE TABLE IF NOT EXISTS soc_events (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT REFERENCES institutions(id) ON DELETE CASCADE,
+      timestamp TEXT NOT NULL,
+      source_type TEXT NOT NULL, -- 'auth' | 'network' | 'web' | 'endpoint' | 'firewall' | 'dns'
+      source_host TEXT NOT NULL DEFAULT '',
+      destination_host TEXT NOT NULL DEFAULT '',
+      protocol TEXT NOT NULL DEFAULT 'TCP',
+      event_category TEXT NOT NULL, -- 'authentication_failure' | 'authentication_success' | 'port_scan' | 'injection_attempt' | 'unusual_outbound' | 'file_modification' | 'privilege_escalation' | 'policy_violation'
+      severity TEXT NOT NULL DEFAULT 'low', -- 'low' | 'medium' | 'high' | 'critical'
+      raw_payload TEXT NOT NULL DEFAULT '',
+      parsed_details TEXT NOT NULL DEFAULT '{}', -- JSON metadata
+      correlation_id TEXT,
+      is_simulation INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_detection_rules (
+      id TEXT PRIMARY KEY,
+      rule_name TEXT NOT NULL,
+      category TEXT NOT NULL, -- 'authentication' | 'network' | 'web' | 'endpoint'
+      severity TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high' | 'critical'
+      description TEXT NOT NULL,
+      mitre_technique_id TEXT NOT NULL DEFAULT '',
+      mitre_tactic TEXT NOT NULL DEFAULT '',
+      condition_type TEXT NOT NULL DEFAULT 'pattern_match', -- 'pattern_match' | 'threshold_frequency' | 'indicator_match'
+      condition_config TEXT NOT NULL DEFAULT '{}', -- JSON configuration
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      is_simulation_only INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_alerts (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT REFERENCES institutions(id) ON DELETE CASCADE,
+      rule_id TEXT REFERENCES soc_detection_rules(id) ON DELETE SET NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      severity TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high' | 'critical'
+      status TEXT NOT NULL DEFAULT 'new', -- 'new' | 'acknowledged' | 'investigating' | 'escalated' | 'resolved' | 'closed' | 'false_positive'
+      affected_asset TEXT NOT NULL DEFAULT '',
+      source_event_ids TEXT NOT NULL DEFAULT '[]', -- JSON array of event IDs
+      indicators TEXT NOT NULL DEFAULT '[]', -- JSON array of IPs/hashes/domains
+      confidence TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high'
+      assigned_analyst_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      resolution_notes TEXT NOT NULL DEFAULT '',
+      is_simulation INTEGER NOT NULL DEFAULT 1,
+      detected_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_alert_notes (
+      id TEXT PRIMARY KEY,
+      alert_id TEXT NOT NULL REFERENCES soc_alerts(id) ON DELETE CASCADE,
+      author_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      note_text TEXT NOT NULL,
+      evidence_refs TEXT NOT NULL DEFAULT '[]', -- JSON array of references
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_incidents (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT REFERENCES institutions(id) ON DELETE CASCADE,
+      incident_number TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL, -- 'account_compromise' | 'malware_infection' | 'suspicious_network' | 'data_exposure' | 'web_appsec' | 'unauthorized_access' | 'phishing' | 'policy_violation' | 'other'
+      severity TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high' | 'critical'
+      status TEXT NOT NULL DEFAULT 'detection', -- 'detection' | 'initial_assessment' | 'containment' | 'investigation' | 'eradication' | 'recovery' | 'validation' | 'closure' | 'post_review'
+      lead_analyst_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      related_alert_ids TEXT NOT NULL DEFAULT '[]', -- JSON array
+      affected_assets TEXT NOT NULL DEFAULT '[]', -- JSON array
+      timeline_events TEXT NOT NULL DEFAULT '[]', -- JSON array of {timestamp, description, source}
+      containment_plan TEXT NOT NULL DEFAULT '',
+      eradication_plan TEXT NOT NULL DEFAULT '',
+      recovery_plan TEXT NOT NULL DEFAULT '',
+      lessons_learned TEXT NOT NULL DEFAULT '',
+      is_simulation INTEGER NOT NULL DEFAULT 1,
+      declared_at TEXT NOT NULL,
+      resolved_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_threat_indicators (
+      id TEXT PRIMARY KEY,
+      indicator_type TEXT NOT NULL, -- 'ip' | 'domain' | 'url' | 'file_hash' | 'email' | 'cve'
+      indicator_value TEXT NOT NULL,
+      source_attribution TEXT NOT NULL,
+      confidence_score INTEGER NOT NULL DEFAULT 80,
+      severity TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high' | 'critical'
+      context_notes TEXT NOT NULL DEFAULT '',
+      first_observed_at TEXT NOT NULL,
+      last_observed_at TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_forensic_cases (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT REFERENCES institutions(id) ON DELETE CASCADE,
+      case_number TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      lead_investigator_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'open', -- 'open' | 'in_analysis' | 'completed' | 'archived'
+      evidence_inventory TEXT NOT NULL DEFAULT '[]', -- JSON array of {id, name, type, sha256, acquired_at, acquired_by, custody_log}
+      findings_summary TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_assets (
+      id TEXT PRIMARY KEY,
+      institution_id TEXT REFERENCES institutions(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      ip_address TEXT NOT NULL DEFAULT '',
+      hostname TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT 'server', -- 'server' | 'endpoint' | 'network_gateway' | 'database' | 'cloud_instance'
+      criticality TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high' | 'critical'
+      environment TEXT NOT NULL DEFAULT 'lab_simulation', -- 'production' | 'staging' | 'lab_simulation'
+      owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'online', -- 'online' | 'degraded' | 'isolated' | 'offline'
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_vulnerabilities (
+      id TEXT PRIMARY KEY,
+      asset_id TEXT NOT NULL REFERENCES soc_assets(id) ON DELETE CASCADE,
+      cve_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      severity TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high' | 'critical'
+      cvss_score REAL NOT NULL DEFAULT 5.0,
+      remediation_status TEXT NOT NULL DEFAULT 'open', -- 'open' | 'in_progress' | 'mitigated' | 'accepted_risk' | 'closed'
+      remediation_notes TEXT NOT NULL DEFAULT '',
+      assigned_to TEXT REFERENCES users(id) ON DELETE SET NULL,
+      discovered_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_playbooks (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL, -- 'brute_force' | 'phishing' | 'malware' | 'web_attack' | 'dns_tunneling' | 'data_leak'
+      objective TEXT NOT NULL,
+      trigger_conditions TEXT NOT NULL,
+      required_evidence TEXT NOT NULL DEFAULT '[]', -- JSON array
+      investigation_steps TEXT NOT NULL DEFAULT '[]', -- JSON array
+      containment_steps TEXT NOT NULL DEFAULT '[]', -- JSON array
+      recovery_steps TEXT NOT NULL DEFAULT '[]', -- JSON array
+      checklist TEXT NOT NULL DEFAULT '[]', -- JSON array
+      is_official INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS soc_scenarios (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL, -- 'authentication' | 'web_security' | 'network_traffic' | 'malware_triage'
+      difficulty TEXT NOT NULL DEFAULT 'intermediate', -- 'beginner' | 'intermediate' | 'advanced'
+      briefing TEXT NOT NULL,
+      objectives TEXT NOT NULL DEFAULT '[]', -- JSON array
+      telemetry_data TEXT NOT NULL DEFAULT '[]', -- JSON array of events to inject
+      expected_mitigation TEXT NOT NULL,
+      scoring_criteria TEXT NOT NULL DEFAULT '{}', -- JSON string
+      created_at TEXT NOT NULL
+    );
+
+    -- Phase 10 Indexes
+    CREATE INDEX IF NOT EXISTS idx_soc_events_time ON soc_events(timestamp DESC);
+    CREATE INDEX IF NOT EXISTS idx_soc_events_source ON soc_events(source_type, severity);
+    CREATE INDEX IF NOT EXISTS idx_soc_events_inst ON soc_events(institution_id);
+    CREATE INDEX IF NOT EXISTS idx_soc_alerts_status ON soc_alerts(status, severity);
+    CREATE INDEX IF NOT EXISTS idx_soc_alerts_inst ON soc_alerts(institution_id);
+    CREATE INDEX IF NOT EXISTS idx_soc_incidents_status ON soc_incidents(status, severity);
+    CREATE INDEX IF NOT EXISTS idx_soc_ioc_type_val ON soc_threat_indicators(indicator_type, indicator_value);
+    CREATE INDEX IF NOT EXISTS idx_soc_forensics_case ON soc_forensic_cases(case_number);
+    CREATE INDEX IF NOT EXISTS idx_soc_assets_cat ON soc_assets(category, status);
+    CREATE INDEX IF NOT EXISTS idx_soc_vuln_asset ON soc_vulnerabilities(asset_id, remediation_status);
   `);
 
   // Safe migrations for Phase 8 user attributes
@@ -2580,6 +2757,436 @@ function seedInitialData(db: DatabaseSync) {
 
     insertAudit.run("iaud_init_ui", "inst_ui_csc", "usr_admin", "INSTITUTION_INITIALIZED", "institution", "inst_ui_csc", JSON.stringify({ note: "Enterprise workspace provisioned" }), "127.0.0.1", now);
     insertAudit.run("iaud_init_idnet", "inst_smk_idnet", "usr_admin", "INSTITUTION_INITIALIZED", "institution", "inst_smk_idnet", JSON.stringify({ note: "Education workspace provisioned" }), "127.0.0.1", now);
+  }
+
+  // 18. Seed Phase 10: Cyber Defense, Security Operations (SOC) & Incident Response
+  const checkSoc = db.prepare("SELECT count(*) as count FROM soc_detection_rules").get() as { count: number };
+  if (checkSoc.count === 0) {
+    const now = new Date().toISOString();
+
+    // Seed Phase 10 Achievements
+    const insertAch = db.prepare(`
+      INSERT OR IGNORE INTO achievements (id, code, title, description, xp_reward, icon, category)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAch.run("ach_soc-analyst-tier1", "soc-analyst-tier1", "Junior SOC Analyst", "Berhasil melakukan triase alert keamanan dan mencatat analisis investigasi pertama.", 40, "ShieldAlert", "defense");
+    insertAch.run("ach_incident-responder", "incident-responder", "Incident Responder", "Menyusun rencana penanganan insiden (containment & recovery) secara lengkap dan terstruktur.", 50, "Flame", "defense");
+    insertAch.run("ach_threat-hunter", "threat-hunter", "Threat Intel Hunter", "Mengidentifikasi indikator ancaman (IoC) berbahaya dan memetakan ke taktik MITRE ATT&CK.", 45, "Crosshair", "defense");
+    insertAch.run("ach_forensic-investigator", "forensic-investigator", "Digital Forensics Lead", "Mendokumentasikan rantai bukti digital (chain of custody) dan menghitung integritas hash SHA-256.", 50, "Search", "defense");
+
+    // Seed Detection Rules
+    const insertRule = db.prepare(`
+      INSERT INTO soc_detection_rules (
+        id, rule_name, category, severity, description, mitre_technique_id, mitre_tactic,
+        condition_type, condition_config, is_enabled, is_simulation_only, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertRule.run(
+      "rule_brute_ssh",
+      "SSH Brute-Force Password Spray",
+      "authentication",
+      "high",
+      "Mendeteksi lonjakan kegagalan autentikasi SSH berulang (>10 percobaan dalam 60 detik) dari satu sumber IP.",
+      "T1110.001",
+      "Credential Access",
+      "threshold_frequency",
+      JSON.stringify({ threshold: 10, window_seconds: 60, event_category: "authentication_failure" }),
+      1,
+      0,
+      now
+    );
+
+    insertRule.run(
+      "rule_sqli_web",
+      "Web Application SQL Injection Attempt",
+      "web",
+      "critical",
+      "Mendeteksi payload injeksi SQL klasik (' OR '1'='1, UNION SELECT, CAST, xp_cmdshell) pada query parameter HTTP.",
+      "T1190",
+      "Initial Access",
+      "pattern_match",
+      JSON.stringify({ pattern: "('|\"|--|;|UNION SELECT|OR 1=1)", event_category: "injection_attempt" }),
+      1,
+      0,
+      now
+    );
+
+    insertRule.run(
+      "rule_dns_tunnel",
+      "Suspicious High-Entropy DNS Tunneling",
+      "network",
+      "high",
+      "Mendeteksi query DNS berulang dengan label subdomain acak berentropi tinggi (>3.8 bits) yang mengindikasikan eksfiltrasi data.",
+      "T1071.004",
+      "Command and Control",
+      "indicator_match",
+      JSON.stringify({ entropy_threshold: 3.8, protocol: "DNS" }),
+      1,
+      0,
+      now
+    );
+
+    insertRule.run(
+      "rule_suid_privesc",
+      "Unauthorized SUID Binary Privilege Escalation",
+      "endpoint",
+      "critical",
+      "Mendeteksi eksekusi biner dengan bit setuid (find, nmap, vim, cp) yang menghasilkan shell interaktif root.",
+      "T1548.001",
+      "Privilege Escalation",
+      "pattern_match",
+      JSON.stringify({ targets: ["/usr/bin/find", "/bin/sh", "/usr/bin/sudo"] }),
+      1,
+      0,
+      now
+    );
+
+    insertRule.run(
+      "rule_port_scan",
+      "TCP SYN Sweep Port Reconnaissance",
+      "network",
+      "medium",
+      "Mendeteksi pengiriman paket TCP SYN beruntun ke lebih dari 15 port berbeda dalam waktu singkat.",
+      "T1046",
+      "Discovery",
+      "threshold_frequency",
+      JSON.stringify({ port_threshold: 15, window_seconds: 30 }),
+      1,
+      0,
+      now
+    );
+
+    // Seed Defensive Assets
+    const insertAsset = db.prepare(`
+      INSERT INTO soc_assets (id, institution_id, name, ip_address, hostname, category, criticality, environment, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAsset.run("ast_dmz_gw", "inst_ui_csc", "Edge Perimeter Firewall & Gateway", "198.51.100.1", "gw-edge-dmz.cyberlab.local", "network_gateway", "critical", "production", "online", now);
+    insertAsset.run("ast_core_db", "inst_ui_csc", "Core Academic Database Server", "10.0.1.15", "db-primary.cyberlab.local", "database", "critical", "production", "online", now);
+    insertAsset.run("ast_web_portal", "inst_ui_csc", "Main Learning Web Application", "10.0.1.20", "app-portal.cyberlab.local", "server", "high", "production", "online", now);
+    insertAsset.run("ast_workstation_lab", "inst_ui_csc", "SOC Analyst Training Workstation", "10.0.2.55", "ws-analyst-01.cyberlab.local", "endpoint", "medium", "lab_simulation", "online", now);
+
+    // Seed Vulnerabilities
+    const insertVuln = db.prepare(`
+      INSERT INTO soc_vulnerabilities (id, asset_id, cve_id, title, severity, cvss_score, remediation_status, remediation_notes, discovered_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertVuln.run("vuln_http2_reset", "ast_web_portal", "CVE-2023-44487", "HTTP/2 Rapid Reset Denial of Service", "high", 7.5, "mitigated", "Ratelimit & stream concurrency patched pada reverse proxy.", now, now);
+    insertVuln.run("vuln_log4shell", "ast_core_db", "CVE-2021-44228", "Apache Log4j2 JNDI Remote Code Execution", "critical", 10.0, "mitigated", "Dependensi Log4j diupgrade ke v2.17.1 dan JNDI lookup dimatikan permanen.", now, now);
+
+    // Seed Threat Intelligence Indicators
+    const insertIoc = db.prepare(`
+      INSERT INTO soc_threat_indicators (id, indicator_type, indicator_value, source_attribution, confidence_score, severity, context_notes, first_observed_at, last_observed_at, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertIoc.run("ioc_ip_bruteforce", "ip", "198.51.100.23", "CISA Advisory & Internal Honeypot", 92, "high", "Sumber scanning dan spray password SSH aktif terhadap server akademik.", now, now, 1);
+    insertIoc.run("ioc_ip_c2", "ip", "203.0.113.195", "AlienVault OTX & Threat Feed", 96, "critical", "Server Command and Control (C2) terafiliasi dengan payload malware infostealer.", now, now, 1);
+    insertIoc.run("ioc_dom_phish", "domain", "update-service-cdn-check.biz", "Internal Incident Triage", 88, "high", "Domain mencurigakan digunakan dalam uji coba tunneling DNS dan pengunduhan backdoor.", now, now, 1);
+    insertIoc.run("ioc_hash_mimikatz", "file_hash", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "Internal SOC Sandbox", 99, "critical", "Varian credential dumper terkompresi (PE executable).", now, now, 1);
+
+    // Seed Security Playbooks
+    const insertPlaybook = db.prepare(`
+      INSERT INTO soc_playbooks (id, title, category, objective, trigger_conditions, required_evidence, investigation_steps, containment_steps, recovery_steps, checklist, is_official, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertPlaybook.run(
+      "ply_brute_force",
+      "Investigasi & Mitigasi Serangan Brute-Force Kredensial",
+      "brute_force",
+      "Mengidentifikasi IP sumber serangan, memeriksa apakah ada akun yang berhasil dijebol, dan memblokir upaya akses lanjutan.",
+      "Alert rule_brute_ssh terpicu atau terdeteksi >10 kegagalan login berturut-turut.",
+      JSON.stringify(["Auth logs (/var/log/auth.log)", "Tabel sessions database", "Daftar IP sumber"]),
+      JSON.stringify(["1. Filter log autentikasi berdasarkan IP penyerang", "2. Periksa apakah terdapat status 'Accepted password' setelah rentetan 'Failed password'", "3. Validasi user target apakah memiliki hak akses sudo/root"]),
+      JSON.stringify(["1. Tambahkan IP penyerang ke tabel blacklist firewall / fail2ban", "2. Reset kredensial akun target jika terindikasi kompromi", "3. Wajibkan autentikasi berbasis kunci SSH (disable password authentication)"]),
+      JSON.stringify(["1. Tinjau ulang audit log pasca mitigasi", "2. Pastikan service SSH berjalan normal tanpa beban CPU berlebih", "3. Laporkan insiden ke pimpinan tim keamanan"]),
+      JSON.stringify(["IP penyerang diidentifikasi", "Verifikasi nihil kompromi akun", "Firewall drop rule aktif", "Tiket insiden terdokumentasi"]),
+      1,
+      now
+    );
+
+    insertPlaybook.run(
+      "ply_sqli_response",
+      "Prosedur Tanggap Darurat Web Injection & Eksfiltrasi Data",
+      "web_attack",
+      "Mengisolasi endpoint web yang rentan terhadap SQLi, menganalisis payload, dan memvalidasi integritas database.",
+      "Alert rule_sqli_web terpicu atau Web Application Firewall (WAF) mendeteksi karakter injeksi SQL.",
+      JSON.stringify(["Nginx / Web access log", "Database query execution log", "Payload URL decoded"]),
+      JSON.stringify(["1. Identifikasi parameter HTTP yang dieksploitasi", "2. Replikasi kerentanan pada lingkungan staging/lab", "3. Periksa query log database untuk mendeteksi apakah data sensitif sempat tereksekusi"]),
+      JSON.stringify(["1. Terapkan aturan WAF sementara untuk memblokir parameter bermasalah", "2. Perbarui kode backend menggunakan parameterized prepared statements"]),
+      JSON.stringify(["1. Deploy patch kode terverifikasi ke production", "2. Uji ulang keamanan endpoint (DAST test)", "3. Dokumentasikan post-incident report"]),
+      JSON.stringify(["Parameter rentan diisolasi", "Patch prepared statements deployed", "Verifikasi integritas database", "Laporan post-mortem selesai"]),
+      1,
+      now
+    );
+
+    // Seed Security Events (Simulation Telemetry)
+    const insertEvent = db.prepare(`
+      INSERT INTO soc_events (id, institution_id, timestamp, source_type, source_host, destination_host, protocol, event_category, severity, raw_payload, parsed_details, correlation_id, is_simulation, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertEvent.run(
+      "evt_ssh_01",
+      "inst_ui_csc",
+      now,
+      "auth",
+      "198.51.100.23",
+      "10.0.1.15",
+      "SSH",
+      "authentication_failure",
+      "high",
+      "Failed password for invalid user admin from 198.51.100.23 port 48212 ssh2",
+      JSON.stringify({ username: "admin", attempts: 18, port: 22 }),
+      "corr_ssh_attack_01",
+      1,
+      now
+    );
+
+    insertEvent.run(
+      "evt_web_sqli_01",
+      "inst_ui_csc",
+      now,
+      "web",
+      "203.0.113.88",
+      "10.0.1.20",
+      "HTTP",
+      "injection_attempt",
+      "critical",
+      "GET /api/v1/modules?category=linux'%20OR%20'1'='1 HTTP/1.1 403 Forbidden",
+      JSON.stringify({ path: "/api/v1/modules", parameter: "category", payload: "' OR '1'='1" }),
+      "corr_web_attack_01",
+      1,
+      now
+    );
+
+    insertEvent.run(
+      "evt_dns_tunnel_01",
+      "inst_ui_csc",
+      now,
+      "dns",
+      "10.0.2.55",
+      "8.8.8.8",
+      "DNS",
+      "unusual_outbound",
+      "high",
+      "Query A a9f2b8c4d1e7.update-service-cdn-check.biz. TTL 60",
+      JSON.stringify({ query: "a9f2b8c4d1e7.update-service-cdn-check.biz", query_type: "A", entropy: 4.1 }),
+      "corr_dns_tunnel_01",
+      1,
+      now
+    );
+
+    insertEvent.run(
+      "evt_port_scan_01",
+      "inst_ui_csc",
+      now,
+      "network",
+      "198.51.100.23",
+      "198.51.100.1",
+      "TCP",
+      "port_scan",
+      "medium",
+      "TCP SYN scan detected: 25 destination ports queried in 12s",
+      JSON.stringify({ ports_probed: [21, 22, 23, 25, 80, 443, 8080, 8443, 3306], count: 25 }),
+      "corr_recon_01",
+      1,
+      now
+    );
+
+    // Seed SOC Alerts
+    const insertAlert = db.prepare(`
+      INSERT INTO soc_alerts (
+        id, institution_id, rule_id, title, description, severity, status, affected_asset,
+        source_event_ids, indicators, confidence, assigned_analyst_id, resolution_notes, is_simulation, detected_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertAlert.run(
+      "alr_ssh_spray",
+      "inst_ui_csc",
+      "rule_brute_ssh",
+      "Lonjakan Kegagalan Autentikasi SSH Terdeteksi",
+      "IP 198.51.100.23 melakukan 18 percobaan login gagal pada port 22 dalam 45 detik terhadap server database.",
+      "high",
+      "investigating",
+      "Core Academic Database Server",
+      JSON.stringify(["evt_ssh_01"]),
+      JSON.stringify(["198.51.100.23"]),
+      "high",
+      "usr_budi",
+      "Analisis awal: serangan otomatis (dictionary attack), tidak ada indikasi password accepted.",
+      1,
+      now,
+      now
+    );
+
+    insertAlert.run(
+      "alr_web_sqli",
+      "inst_ui_csc",
+      "rule_sqli_web",
+      "Pola SQL Injection Terdeteksi pada Parameter Web",
+      "Permintaan HTTP GET mengandung karakter kutip dan tautologi logika ' OR '1'='1.",
+      "critical",
+      "escalated",
+      "Main Learning Web Application",
+      JSON.stringify(["evt_web_sqli_01"]),
+      JSON.stringify(["203.0.113.88"]),
+      "high",
+      "usr_admin",
+      "Telah diblokir oleh WAF, eskalasi ke Incident Response untuk audit source code.",
+      1,
+      now,
+      now
+    );
+
+    insertAlert.run(
+      "alr_dns_beacon",
+      "inst_ui_csc",
+      "rule_dns_tunnel",
+      "Anomali Query DNS Berentropi Tinggi (Indikasi C2)",
+      "Workstation lab mengirimkan rentetan query subdomain berentropi 4.1 ke domain update-service-cdn-check.biz.",
+      "high",
+      "new",
+      "SOC Analyst Training Workstation",
+      JSON.stringify(["evt_dns_tunnel_01"]),
+      JSON.stringify(["update-service-cdn-check.biz"]),
+      "medium",
+      null,
+      "",
+      1,
+      now,
+      now
+    );
+
+    // Seed Alert Notes
+    const insertNote = db.prepare(`
+      INSERT INTO soc_alert_notes (id, alert_id, author_id, note_text, evidence_refs, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    insertNote.run(
+      "anot_ssh_01",
+      "alr_ssh_spray",
+      "usr_budi",
+      "Memeriksa log /var/log/auth.log pada server target. Seluruh percobaan menggunakan akun umum (admin, root, test). Tidak ada session yang berhasil terbuka.",
+      JSON.stringify(["evt_ssh_01"]),
+      now
+    );
+
+    // Seed Incident
+    const insertIncident = db.prepare(`
+      INSERT INTO soc_incidents (
+        id, institution_id, incident_number, title, category, severity, status, lead_analyst_id,
+        related_alert_ids, affected_assets, timeline_events, containment_plan, eradication_plan,
+        recovery_plan, lessons_learned, is_simulation, declared_at, resolved_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertIncident.run(
+      "inc_2026_001",
+      "inst_ui_csc",
+      "INC-2026-001",
+      "Percobaan Akses Tidak Sah Terkoordinasi & Brute-Force SSH Server DB",
+      "account_compromise",
+      "high",
+      "containment",
+      "usr_budi",
+      JSON.stringify(["alr_ssh_spray"]),
+      JSON.stringify(["Core Academic Database Server"]),
+      JSON.stringify([
+        { timestamp: now, description: "Alert alr_ssh_spray terpicu dari 18 percobaan login SSH gagal.", source: "SOC Detection Engine" },
+        { timestamp: now, description: "Analyst Budi mengkonfirmasi aktivitas serangan terarah dan mengeskalasi menjadi tiket insiden.", source: "Analyst Note" }
+      ]),
+      "1. Drop seluruh trafik masuk dari subnet penyerang pada gateway perimeter.\n2. Nonaktifkan otentikasi password SSH pada db-primary.",
+      "1. Tinjau apakah ada SSH authorized_keys yang disusupkan.\n2. Verifikasi hash integritas biner /usr/sbin/sshd.",
+      "1. Aktifkan kembali akses dengan verifikasi IP VPN internal.\n2. Pasang agent Fail2ban dengan threshold 5 kegagalan.",
+      "Pentingnya mempercepat penutupan port SSH publik dan mewajibkan akses via bastion host / VPN.",
+      1,
+      now,
+      null
+    );
+
+    // Seed Forensic Case
+    const insertCase = db.prepare(`
+      INSERT INTO soc_forensic_cases (id, institution_id, case_number, title, description, lead_investigator_id, status, evidence_inventory, findings_summary, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertCase.run(
+      "fcase_2026_001",
+      "inst_ui_csc",
+      "FC-2026-001",
+      "Investigasi Artefak PCAP Rekaman Eksfiltrasi Data & Backdoor Traffic",
+      "Pengumpulan dan verifikasi keaslian rekaman paket jaringan (PCAP) dan log sistem untuk mengungkap jejak komunikasi C2.",
+      "usr_budi",
+      "in_analysis",
+      JSON.stringify([
+        {
+          id: "evd_pcap_01",
+          name: "suspicious_c2_traffic.pcap",
+          type: "network_pcap",
+          sha256: "4b825dc642cb6eb9a060e54b3c69248f0c1a4a5ec352d3a95613a73a525a507f",
+          acquired_at: now,
+          acquired_by: "usr_budi",
+          custody_log: "Diakuisisi dari mirror port interface eth0 switch core DMZ. Integritas hash SHA-256 terverifikasi."
+        }
+      ]),
+      "Ditemukan 4 aliran paket TCP pada port 443 dengan TLS handshake unassigned cipher suite, bersesuaian dengan aktivitas beaconing IoC 203.0.113.195.",
+      now,
+      now
+    );
+
+    // Seed SOC Simulation Scenarios (Training Labs)
+    const insertScenario = db.prepare(`
+      INSERT INTO soc_scenarios (id, title, category, difficulty, briefing, objectives, telemetry_data, expected_mitigation, scoring_criteria, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    insertScenario.run(
+      "scn_ssh_bruteforce",
+      "Simulasi Triase Serangan SSH Password Spraying",
+      "authentication",
+      "beginner",
+      "Sistem pemantauan mendeteksi puluhan kegagalan login SSH dari alamat IP eksternal yang tidak dikenal. Anda ditugaskan menganalisis log autentikasi, menentukan apakah ada akun yang terkompromi, dan merumuskan respons penanganan.",
+      JSON.stringify([
+        "Identifikasi IP penyerang dan jumlah percobaan login",
+        "Periksa apakah ada username yang berhasil login (Accepted password)",
+        "Tentukan tindakan penahanan (containment) yang paling tepat"
+      ]),
+      JSON.stringify([
+        { time: "10:14:02", src: "198.51.100.23", msg: "Failed password for root from 198.51.100.23 port 51102 ssh2" },
+        { time: "10:14:08", src: "198.51.100.23", msg: "Failed password for admin from 198.51.100.23 port 51103 ssh2" },
+        { time: "10:14:15", src: "198.51.100.23", msg: "Failed password for student from 198.51.100.23 port 51104 ssh2" }
+      ]),
+      "Tambahkan rule firewall drop IP penyerang dan matikan PasswordAuthentication di sshd_config.",
+      JSON.stringify({ max_score: 100, pass_threshold: 70 }),
+      now
+    );
+
+    insertScenario.run(
+      "scn_web_sqli_defense",
+      "Triase Serangan Web SQL Injection & Data Leakage",
+      "web_security",
+      "intermediate",
+      "Log Nginx merekam lonjakan respons HTTP 500 dan payload SQLi pada parameter pencarian modul. Sebagai analis Blue Team, telusuri dampak serangan dan sarankan perbaikan kode.",
+      JSON.stringify([
+        "Ekstrak parameter URL yang dijadikan sasaran injeksi",
+        "Evaluasi apakah serangan berhasil mengekstrak data dari database",
+        "Tuliskan rekomendasi perbaikan berbasis parameterized query"
+      ]),
+      JSON.stringify([
+        { time: "14:22:01", src: "203.0.113.88", msg: "GET /api/v1/modules?search=1%27%20UNION%20SELECT%20null,username,password%20FROM%20users-- HTTP/1.1 200" }
+      ]),
+      "Ganti konkatenasi string SQL dengan Prepared Statements parameterized query.",
+      JSON.stringify({ max_score: 100, pass_threshold: 70 }),
+      now
+    );
   }
 }
 

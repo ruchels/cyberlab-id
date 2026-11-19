@@ -20,6 +20,7 @@ import {
   Search,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { soundEngine } from "@/lib/sound-engine";
 
 interface Challenge {
   id: string;
@@ -87,6 +88,7 @@ export default function ChallengesPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        soundEngine.playSuccess();
         setSubmitFeedback((prev) => ({
           ...prev,
           [challengeId]: {
@@ -103,6 +105,7 @@ export default function ChallengesPage() {
         );
         await refreshUser();
       } else {
+        soundEngine.playAlert();
         setSubmitFeedback((prev) => ({
           ...prev,
           [challengeId]: {

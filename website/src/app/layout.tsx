@@ -5,6 +5,8 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { LanguageProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-context";
+import { SoundProvider } from "@/lib/sound-context";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -50,18 +52,21 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <body
-        className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)] selection:bg-[var(--color-accent)] selection:text-black"
+        className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)] selection:bg-[var(--color-cyan)] selection:text-black antialiased relative"
         suppressHydrationWarning
       >
-        <LanguageProvider>
-          <AuthProvider>
-            <Navbar />
-            <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-              {children}
-            </main>
-            <Footer />
-          </AuthProvider>
-        </LanguageProvider>
+        <SoundProvider>
+          <AnimatedBackground />
+          <LanguageProvider>
+            <AuthProvider>
+              <Navbar />
+              <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
+                {children}
+              </main>
+              <Footer />
+            </AuthProvider>
+          </LanguageProvider>
+        </SoundProvider>
       </body>
     </html>
   );

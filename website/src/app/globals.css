@@ -2,21 +2,28 @@
 
 @layer base {
   :root {
-    --color-bg: #090d16;
-    --color-surface: #101623;
-    --color-surface-elevated: #162032;
-    --color-surface-card: #0d131f;
+    --color-bg: #070a13;
+    --color-surface: #0e1526;
+    --color-surface-elevated: #141f36;
+    --color-surface-card: #0b1120;
     --color-border: #1e293b;
     --color-border-subtle: #172338;
     --color-border-accent: rgba(0, 255, 157, 0.25);
     
-    --color-text: #e2e8f0;
+    --color-text: #f1f5f9;
     --color-text-secondary: #94a3b8;
     --color-text-muted: #64748b;
     
     --color-accent: #00ff9d;
     --color-accent-dark: #00cc7d;
     --color-accent-glow: rgba(0, 255, 157, 0.12);
+
+    --color-cyan: #00f0ff;
+    --color-cyan-dark: #00b4d8;
+    --color-cyan-glow: rgba(0, 240, 255, 0.15);
+
+    --color-violet: #8b5cf6;
+    --color-violet-glow: rgba(139, 92, 246, 0.15);
     
     --color-warning: #f59e0b;
     --color-danger: #ef4444;
@@ -36,35 +43,36 @@ body {
   font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 ::selection {
-  background-color: var(--color-accent);
+  background-color: var(--color-cyan);
   color: #05080e;
 }
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg);
+  background: #070a13;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: #1e293b;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+  background: #334155;
 }
 
 /* Accessibility Focus Visible */
 *:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-cyan);
   outline-offset: 2px;
 }
 
@@ -73,18 +81,106 @@ code, pre, kbd, samp {
   font-family: var(--font-mono, 'JetBrains Mono', 'Fira Code', 'Courier New', monospace);
 }
 
-/* Custom subtle terminal glow */
+/* Cyber Grids & Patterns */
+.bg-grid-cyber {
+  background-size: 36px 36px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+}
+
+.bg-dots-cyber {
+  background-size: 24px 24px;
+  background-image: radial-gradient(rgba(0, 240, 255, 0.08) 1px, transparent 1px);
+}
+
+/* Ambient & Glow Effects */
 .cyber-glow {
   box-shadow: 0 0 25px var(--color-accent-glow);
 }
 
+.cyber-glow-cyan {
+  box-shadow: 0 0 25px var(--color-cyan-glow);
+}
+
+.cyber-glow-violet {
+  box-shadow: 0 0 25px var(--color-violet-glow);
+}
+
+/* Card Modern Polish */
 .cyber-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cyber-card:hover {
-  border-color: rgba(0, 255, 157, 0.35);
-  transform: translateY(-1px);
+  border-color: rgba(0, 240, 255, 0.3);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 240, 255, 0.06);
+  transform: translateY(-2px);
+}
+
+/* Keyframe Animations */
+@keyframes ambientDrift {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(30px, -20px) scale(1.08); opacity: 0.6; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+}
+
+@keyframes radarSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+.animate-ambient-drift {
+  animation: ambientDrift 18s ease-in-out infinite;
+}
+
+.animate-radar-sweep {
+  animation: radarSweep 4s linear infinite;
+}
+
+.animate-scanline {
+  animation: scanline 8s linear infinite;
+}
+
+/* Micro-interaction button press */
+.btn-press {
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* Glassmorphism Subtle */
+.cyber-glass {
+  background: rgba(14, 21, 38, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-ambient-drift,
+  .animate-radar-sweep,
+  .animate-scanline,
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
+  }
+  .cyber-card:hover {
+    transform: none !important;
+  }
 }

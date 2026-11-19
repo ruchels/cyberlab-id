@@ -221,13 +221,13 @@ db.prepare("DELETE FROM developer_api_keys WHERE id = ?").run(testKeyId);
 
 // 7. GDPR Compliance: User Data Minimization & Preferences
 console.log("\n[7] GDPR Data Portability & Region Neutrality");
-const adminUser = db.prepare("SELECT * FROM users WHERE id='usr_admin'").get() as any;
+const adminUser = db.prepare("SELECT * FROM users WHERE id='usr_admin'").get();
 assert(adminUser.preferred_language === "id", "Persistent preferred language configured");
 assert(adminUser.preferred_timezone !== undefined, "Persistent timezone configured");
 
 // Test updating user preferences
 db.prepare("UPDATE users SET preferred_language='en', preferred_timezone='UTC', github_username='cyberlab-dev' WHERE id='usr_admin'").run();
-const updatedUser = db.prepare("SELECT preferred_language, preferred_timezone, github_username FROM users WHERE id='usr_admin'").get() as any;
+const updatedUser = db.prepare("SELECT preferred_language, preferred_timezone, github_username FROM users WHERE id='usr_admin'").get();
 assert(updatedUser.preferred_language === "en", "Successfully updates preferred language to English");
 assert(updatedUser.preferred_timezone === "UTC", "Successfully updates timezone to UTC");
 assert(updatedUser.github_username === "cyberlab-dev", "Successfully connects GitHub username");

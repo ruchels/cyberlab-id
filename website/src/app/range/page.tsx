@@ -23,6 +23,7 @@ import {
   Layers,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useSound } from "@/lib/sound-context";
 
 interface Template {
   id: string;
@@ -40,6 +41,7 @@ interface Template {
 export default function CyberRangeDashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { playTab, playClick, playSuccess, playAlert } = useSound();
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [activeSession, setActiveSession] = useState<any>(null);
@@ -98,11 +100,14 @@ export default function CyberRangeDashboardPage() {
       const data = await res.json();
 
       if (res.ok && data.session) {
+        playSuccess();
         router.push(`/range/${data.session.id}`);
       } else {
+        playAlert();
         setLaunchError(data.error || "Gagal meluncurkan lab.");
       }
     } catch {
+      playAlert();
       setLaunchError("Tidak dapat terhubung ke Lab Execution Service.");
     } finally {
       setLaunchingId(null);

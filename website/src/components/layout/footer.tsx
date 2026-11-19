@@ -42,6 +42,11 @@ export function Footer() {
             </h4>
             <ul className="space-y-2 font-mono text-xs">
               <li>
+                <Link href="/soc" className="hover:text-[var(--color-accent)] transition-colors text-emerald-400 font-semibold">
+                  SOC & Incident Response
+                </Link>
+              </li>
+              <li>
                 <Link href="/academy" className="hover:text-[var(--color-accent)] transition-colors">
                   Cybersecurity Academy
                 </Link>

@@ -35,7 +35,7 @@ import {
   Code,
   Building2,
 } from "lucide-react";
-import { GithubIcon, Badge } from "@/components/ui";
+import { GithubIcon, Badge, SoundControl } from "@/components/ui";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -48,6 +48,7 @@ export function Navbar() {
     { href: "/academy", label: "Akademi", icon: GraduationCap },
     { href: "/learning", label: t.nav.learning, icon: BookOpen },
     { href: "/assistant", label: "AI Tutor", icon: Bot },
+    { href: "/soc", label: "SOC Defense", icon: ShieldAlert },
     { href: "/security-center", label: "Security Center", icon: ShieldAlert },
     { href: "/range", label: (t.nav as any).range || "Cyber Range", icon: Activity },
     { href: "/labs", label: t.nav.labs, icon: FlaskConical },
@@ -177,6 +178,9 @@ export function Navbar() {
             <Globe className="w-3.5 h-3.5 text-[var(--color-accent)]" />
             <span className="font-bold">{locale.toUpperCase()}</span>
           </button>
+
+          {/* Procedural Sound Control */}
+          <SoundControl />
 
           {/* User Auth Info or Login button */}
           {user ? (

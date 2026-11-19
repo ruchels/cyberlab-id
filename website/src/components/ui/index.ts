@@ -5,3 +5,8 @@ export * from "./input";
 export * from "./code-block";
 export * from "./terminal";
 export * from "./icons";
+export * from "./sound-control";
+export * from "./animated-background";
+export * from "./security-radar";
+export * from "./digital-network";
+export * from "./cyber-activity-indicator";
