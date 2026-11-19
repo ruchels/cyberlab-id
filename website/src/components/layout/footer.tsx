@@ -52,6 +52,26 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/assistant" className="hover:text-[var(--color-accent)] transition-colors">
+                  AI Learning Assistant
+                </Link>
+              </li>
+              <li>
+                <Link href="/learning/ai-path" className="hover:text-[var(--color-accent)] transition-colors">
+                  AI Learning Path
+                </Link>
+              </li>
+              <li>
+                <Link href="/security-center" className="hover:text-[var(--color-accent)] transition-colors">
+                  Security Analysis Center
+                </Link>
+              </li>
+              <li>
+                <Link href="/quizzes" className="hover:text-[var(--color-accent)] transition-colors">
+                  Kuis AI Adaptif
+                </Link>
+              </li>
+              <li>
                 <Link href="/range" className="hover:text-[var(--color-accent)] transition-colors">
                   {(t.nav as any).range || "Cyber Range"}
                 </Link>

@@ -26,10 +26,14 @@ import {
   GitPullRequest,
   Calendar,
   Check,
+  Bot,
+  Brain,
+  BookOpen,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
-type AdminTab = "analytics" | "users" | "ctf" | "range" | "moderation" | "audit" | "readiness" | "ecosystem";
+type AdminTab = "analytics" | "users" | "ctf" | "range" | "moderation" | "audit" | "readiness" | "ecosystem" | "ai";
 
 export default function AdminDashboardPage() {
   const { user, isLoading } = useAuth();
@@ -159,6 +163,142 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // AI & Automation state
+  const [aiData, setAiData] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiActionMsg, setAiActionMsg] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState("gemini");
+  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [newDocTitle, setNewDocTitle] = useState("");
+  const [newDocCategory, setNewDocCategory] = useState("web");
+  const [newDocTopic, setNewDocTopic] = useState("");
+  const [newDocContent, setNewDocContent] = useState("");
+  const [showAddDocModal, setShowAddDocModal] = useState(false);
+
+  const fetchAiAdmin = async () => {
+    try {
+      setAiLoading(true);
+      const res = await fetch("/api/admin/ai");
+      if (res.ok) {
+        const json = await res.json();
+        setAiData(json.data);
+        if (json.data?.config) {
+          setSelectedProvider(json.data.config.provider || "gemini");
+          setSelectedModel(json.data.config.model_name || "gemini-2.0-flash");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleSaveAiConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/admin/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_config",
+          provider: selectedProvider,
+          model_name: selectedModel,
+          api_key: apiKeyInput || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAiActionMsg("Konfigurasi AI Provider berhasil diperbarui!");
+        setApiKeyInput("");
+        fetchAiAdmin();
+        setTimeout(() => setAiActionMsg(null), 4000);
+      } else {
+        alert(data.error || "Gagal memperbarui konfigurasi AI");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleDocIndex = async (docId: string, currentIndexed: boolean) => {
+    try {
+      const res = await fetch("/api/admin/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggle_doc_indexed",
+          doc_id: docId,
+          is_indexed: !currentIndexed,
+        }),
+      });
+      if (res.ok) {
+        fetchAiAdmin();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteDoc = async (docId: string) => {
+    if (!confirm("Hapus dokumen pengetahuan ini?")) return;
+    try {
+      const res = await fetch("/api/admin/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_doc", doc_id: docId }),
+      });
+      if (res.ok) {
+        fetchAiAdmin();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReviewQuiz = async (quizId: string, status: "approved" | "rejected") => {
+    try {
+      const res = await fetch("/api/admin/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "review_quiz", quiz_id: quizId, status }),
+      });
+      if (res.ok) {
+        fetchAiAdmin();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDocTitle || !newDocContent) return;
+    try {
+      const res = await fetch("/api/admin/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create_doc",
+          title: newDocTitle,
+          category: newDocCategory,
+          topic: newDocTopic || newDocTitle,
+          content: newDocContent,
+        }),
+      });
+      if (res.ok) {
+        setNewDocTitle("");
+        setNewDocTopic("");
+        setNewDocContent("");
+        setShowAddDocModal(false);
+        fetchAiAdmin();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const fetchAnalytics = async () => {
     try {
       const res = await fetch("/api/admin/analytics");
@@ -245,6 +385,7 @@ export default function AdminDashboardPage() {
       if (activeTab === "moderation") fetchReports();
       if (activeTab === "readiness") fetchReadiness();
       if (activeTab === "ecosystem") fetchEcosystem();
+      if (activeTab === "ai") fetchAiAdmin();
     }
   }, [user, activeTab]);
 
@@ -446,6 +587,16 @@ export default function AdminDashboardPage() {
             }`}
           >
             <GitPullRequest className="w-3.5 h-3.5" /> Ekosistem & Riset
+          </button>
+          <button
+            onClick={() => setActiveTab("ai")}
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              activeTab === "ai"
+                ? "bg-[var(--color-accent)] text-[var(--color-background)] font-bold shadow"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5" /> AI Engine & Data
           </button>
         </div>
       </div>
@@ -1388,6 +1539,373 @@ export default function AdminDashboardPage() {
                             </td>
                           </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Tab 9: AI Engine & Knowledge Base */}
+      {activeTab === "ai" && (
+        <div className="space-y-6">
+          {aiActionMsg && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-xs font-mono">
+              ✓ {aiActionMsg}
+            </div>
+          )}
+
+          {aiLoading && !aiData ? (
+            <div className="text-center py-12 text-[var(--color-text-muted)] text-sm">
+              Memuat data konfigurasi AI & Knowledge Base...
+            </div>
+          ) : aiData ? (
+            <div className="space-y-8">
+              {/* Summary KPIs */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Provider Aktif</div>
+                  <div className="text-lg font-bold font-mono text-[var(--color-accent)] mt-1 uppercase">
+                    {aiData.config?.provider || "Local / RAG"}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    {aiData.config?.model_name || "Fallback RAG Engine"}
+                  </div>
+                </Card>
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Knowledge Docs</div>
+                  <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">
+                    {aiData.knowledgeDocs?.length || 0}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    {aiData.knowledgeDocs?.filter((d: any) => d.is_indexed).length || 0} Terindeks RAG
+                  </div>
+                </Card>
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Draf Kuis Pending</div>
+                  <div className="text-2xl font-bold font-mono text-amber-400 mt-1">
+                    {aiData.quizDrafts?.filter((q: any) => q.status === "draft").length || 0}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    {aiData.quizDrafts?.filter((q: any) => q.status === "approved").length || 0} Disetujui
+                  </div>
+                </Card>
+                <Card className="p-4 bg-[var(--color-surface)] border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-muted)] font-mono uppercase">Analisis Defensif</div>
+                  <div className="text-2xl font-bold font-mono text-indigo-400 mt-1">
+                    {aiData.stats?.total_analyses || 0}
+                  </div>
+                  <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">
+                    Log, PCAP & File Scanner
+                  </div>
+                </Card>
+              </div>
+
+              {/* Provider Config Form */}
+              <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
+                <CardHeader className="pb-3 border-b border-[var(--color-border-subtle)]">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-[var(--color-accent)]" />
+                    <div>
+                      <h3 className="text-sm font-bold text-[var(--color-text)]">Konfigurasi Model & Provider AI</h3>
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Atur integrasi LLM eksternal dengan keamanan Zero-Leak & fail-safe internal RAG.
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardBody className="p-5">
+                  <form onSubmit={handleSaveAiConfig} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div>
+                      <label className="block text-xs font-mono text-[var(--color-text-secondary)] mb-1">
+                        LLM Provider
+                      </label>
+                      <select
+                        value={selectedProvider}
+                        onChange={(e) => {
+                          setSelectedProvider(e.target.value);
+                          if (e.target.value === "gemini") setSelectedModel("gemini-2.0-flash");
+                          if (e.target.value === "openai") setSelectedModel("gpt-4o-mini");
+                          if (e.target.value === "anthropic") setSelectedModel("claude-3-5-sonnet-20241022");
+                          if (e.target.value === "local") setSelectedModel("llama-3-8b-instruct");
+                        }}
+                        className="w-full bg-[var(--color-bg)] border border-[var(--color-border)] rounded px-3 py-2 text-xs text-[var(--color-text)] focus:border-[var(--color-accent)] outline-none"
+                      >
+                        <option value="gemini">Google Gemini (Recommended)</option>
+                        <option value="openai">OpenAI (GPT-4o Mini)</option>
+                        <option value="anthropic">Anthropic Claude</option>
+                        <option value="local">Local RAG / Offline Safe Engine</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono text-[var(--color-text-secondary)] mb-1">
+                        Nama Model / Endpoint
+                      </label>
+                      <Input
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        placeholder="contoh: gemini-2.0-flash"
+                        className="text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono text-[var(--color-text-secondary)] mb-1">
+                        API Key {aiData.config?.masked_key ? `(${aiData.config.masked_key})` : "(Belum diatur)"}
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="password"
+                          value={apiKeyInput}
+                          onChange={(e) => setApiKeyInput(e.target.value)}
+                          placeholder={aiData.config?.masked_key ? "Ketik untuk mengganti key" : "Masukkan API key"}
+                          className="text-xs flex-1"
+                        />
+                        <Button type="submit" variant="primary" size="sm" className="whitespace-nowrap">
+                          Simpan
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                </CardBody>
+              </Card>
+
+              {/* Knowledge Base Management */}
+              <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
+                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-[var(--color-border-subtle)]">
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-cyan-400" />
+                      Knowledge Base RAG ({aiData.knowledgeDocs?.length || 0})
+                    </h3>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                      Dokumen referensi berbobot tinggi untuk grounding AI Assistant dan anti-hallucination.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddDocModal(!showAddDocModal)}
+                    className="text-xs"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 mr-1" />
+                    Tambah Dokumen
+                  </Button>
+                </CardHeader>
+
+                {showAddDocModal && (
+                  <div className="p-4 bg-[var(--color-bg)] border-b border-[var(--color-border-subtle)]">
+                    <form onSubmit={handleCreateDoc} className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                            Judul Dokumen
+                          </label>
+                          <Input
+                            value={newDocTitle}
+                            onChange={(e) => setNewDocTitle(e.target.value)}
+                            placeholder="cth: Analisis Header HTTP Security"
+                            required
+                            className="text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                            Kategori Domain
+                          </label>
+                          <select
+                            value={newDocCategory}
+                            onChange={(e) => setNewDocCategory(e.target.value)}
+                            className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-3 py-2 text-xs text-[var(--color-text)]"
+                          >
+                            <option value="web">Web Security</option>
+                            <option value="network">Network Security</option>
+                            <option value="linux">Linux Hardening</option>
+                            <option value="crypto">Cryptography</option>
+                            <option value="forensics">Digital Forensics</option>
+                            <option value="reverse">Reverse Engineering</option>
+                            <option value="threat">Threat Detection</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                            Topik Spesifik
+                          </label>
+                          <Input
+                            value={newDocTopic}
+                            onChange={(e) => setNewDocTopic(e.target.value)}
+                            placeholder="cth: CSP, HSTS, X-Frame-Options"
+                            className="text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-mono text-[var(--color-text-secondary)] mb-1">
+                          Konten Edukatif (Markdown / Plain Text)
+                        </label>
+                        <textarea
+                          value={newDocContent}
+                          onChange={(e) => setNewDocContent(e.target.value)}
+                          rows={4}
+                          placeholder="Tuliskan materi teknis, mitigasi defensif, atau penjelasan konsep..."
+                          required
+                          className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded p-2 text-xs text-[var(--color-text)] font-mono outline-none focus:border-[var(--color-accent)]"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAddDocModal(false)}
+                          className="text-xs"
+                        >
+                          Batal
+                        </Button>
+                        <Button type="submit" variant="primary" size="sm" className="text-xs">
+                          Simpan Dokumen
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                <CardBody className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] font-mono border-b border-[var(--color-border-subtle)]">
+                        <tr>
+                          <th className="py-2.5 px-3">Judul</th>
+                          <th className="py-2.5 px-3">Kategori</th>
+                          <th className="py-2.5 px-3">Topik</th>
+                          <th className="py-2.5 px-3 text-center">Status RAG</th>
+                          <th className="py-2.5 px-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {aiData.knowledgeDocs?.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-[var(--color-text-muted)]">
+                              Belum ada dokumen knowledge base.
+                            </td>
+                          </tr>
+                        ) : (
+                          aiData.knowledgeDocs?.map((doc: any) => (
+                            <tr key={doc.id} className="hover:bg-white/[0.01]">
+                              <td className="py-2.5 px-3 font-semibold text-[var(--color-text)]">{doc.title}</td>
+                              <td className="py-2.5 px-3 uppercase text-[10px] text-cyan-400 font-mono">
+                                {doc.category}
+                              </td>
+                              <td className="py-2.5 px-3 text-[var(--color-text-secondary)]">{doc.topic}</td>
+                              <td className="py-2.5 px-3 text-center">
+                                <button
+                                  onClick={() => handleToggleDocIndex(doc.id, doc.is_indexed)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                                    doc.is_indexed
+                                      ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
+                                      : "bg-zinc-500/20 text-zinc-400 hover:bg-zinc-500/30"
+                                  }`}
+                                >
+                                  {doc.is_indexed ? "✓ Terindeks" : "Nonaktif"}
+                                </button>
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <button
+                                  onClick={() => handleDeleteDoc(doc.id)}
+                                  className="text-rose-400 hover:text-rose-300 p-1"
+                                  title="Hapus Dokumen"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardBody>
+              </Card>
+
+              {/* Quiz Drafts Review Queue */}
+              <Card className="bg-[var(--color-surface)] border-[var(--color-border)]">
+                <CardHeader className="pb-3 border-b border-[var(--color-border-subtle)]">
+                  <h3 className="text-sm font-bold text-[var(--color-text)] flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-amber-400" />
+                    Antrean Draf Kuis AI ({aiData.quizDrafts?.length || 0})
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                    Tinjau dan setujui pertanyaan kuis sebelum dipublikasikan ke siswa di /quizzes.
+                  </p>
+                </CardHeader>
+                <CardBody className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] font-mono border-b border-[var(--color-border-subtle)]">
+                        <tr>
+                          <th className="py-2.5 px-3">Pertanyaan</th>
+                          <th className="py-2.5 px-3">Domain</th>
+                          <th className="py-2.5 px-3">Level</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Aksi Review</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                        {aiData.quizDrafts?.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="py-6 text-center text-[var(--color-text-muted)]">
+                              Tidak ada draf kuis pending.
+                            </td>
+                          </tr>
+                        ) : (
+                          aiData.quizDrafts?.map((quiz: any) => (
+                            <tr key={quiz.id} className="hover:bg-white/[0.01]">
+                              <td className="py-2.5 px-3 max-w-xs truncate font-medium text-[var(--color-text)]">
+                                {quiz.question}
+                              </td>
+                              <td className="py-2.5 px-3 uppercase text-[10px] text-amber-400 font-mono">
+                                {quiz.domain}
+                              </td>
+                              <td className="py-2.5 px-3 text-[10px] uppercase font-mono text-[var(--color-text-muted)]">
+                                {quiz.difficulty}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <Badge
+                                  variant={quiz.status === "approved" ? "accent" : quiz.status === "rejected" ? "destructive" : "secondary"}
+                                  size="sm"
+                                >
+                                  {quiz.status}
+                                </Badge>
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                {quiz.status === "draft" ? (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      onClick={() => handleReviewQuiz(quiz.id, "approved")}
+                                      className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/30"
+                                    >
+                                      Setujui
+                                    </button>
+                                    <button
+                                      onClick={() => handleReviewQuiz(quiz.id, "rejected")}
+                                      className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold hover:bg-rose-500/30"
+                                    >
+                                      Tolak
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-[var(--color-text-muted)] uppercase font-mono">
+                                    {quiz.status}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>

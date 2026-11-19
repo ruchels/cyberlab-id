@@ -416,6 +416,105 @@ function initSchema(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_mentorship_requests_mentor ON mentorship_requests(mentor_id, status);
     CREATE INDEX IF NOT EXISTS idx_mentorship_requests_student ON mentorship_requests(student_id);
     CREATE INDEX IF NOT EXISTS idx_community_events_time ON community_events(start_time);
+
+    -- Phase 7: AI Assistant, Knowledge Base, Personalization, Quizzes, Security Center & Config
+    CREATE TABLE IF NOT EXISTS ai_conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      context_type TEXT NOT NULL DEFAULT 'general', -- 'general' | 'lab' | 'challenge' | 'analysis'
+      context_id TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL REFERENCES ai_conversations(id) ON DELETE CASCADE,
+      role TEXT NOT NULL, -- 'user' | 'assistant' | 'system'
+      content TEXT NOT NULL,
+      sources TEXT NOT NULL DEFAULT '[]', -- JSON array of references [{title, path, snippet}]
+      feedback TEXT DEFAULT NULL, -- 'up' | 'down'
+      feedback_notes TEXT DEFAULT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_knowledge_docs (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL, -- 'linux' | 'networking' | 'web' | 'crypto' | 'forensics' | 'reverse' | 'general'
+      topic TEXT NOT NULL,
+      content TEXT NOT NULL,
+      tags TEXT NOT NULL DEFAULT '[]', -- JSON array
+      source_url TEXT DEFAULT '',
+      is_indexed INTEGER NOT NULL DEFAULT 1,
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      author_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_quiz_drafts (
+      id TEXT PRIMARY KEY,
+      created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+      topic TEXT NOT NULL,
+      category TEXT NOT NULL,
+      difficulty TEXT NOT NULL DEFAULT 'intermediate', -- 'beginner' | 'intermediate' | 'advanced'
+      question TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'multiple_choice', -- 'multiple_choice' | 'true_false' | 'scenario'
+      options TEXT NOT NULL DEFAULT '[]', -- JSON array of strings
+      correct_answer TEXT NOT NULL,
+      explanation TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft', -- 'draft' | 'approved' | 'rejected'
+      reviewer_notes TEXT DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_user_preferences (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      is_personalization_enabled INTEGER NOT NULL DEFAULT 1,
+      preferred_domains TEXT NOT NULL DEFAULT '[]', -- JSON array
+      weekly_target_hours INTEGER NOT NULL DEFAULT 5,
+      consent_given INTEGER NOT NULL DEFAULT 1,
+      consent_updated_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_security_analyses (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      analysis_type TEXT NOT NULL, -- 'log' | 'pcap' | 'file'
+      target_name TEXT NOT NULL,
+      sha256_hash TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      evidence TEXT NOT NULL DEFAULT '[]', -- JSON array
+      indicators TEXT NOT NULL DEFAULT '[]', -- JSON array
+      confidence TEXT NOT NULL DEFAULT 'medium', -- 'low' | 'medium' | 'high'
+      recommendations TEXT NOT NULL DEFAULT '[]', -- JSON array
+      limitations TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_provider_config (
+      id TEXT PRIMARY KEY,
+      provider TEXT NOT NULL DEFAULT 'gemini', -- 'gemini' | 'openai' | 'anthropic' | 'local'
+      model_name TEXT NOT NULL DEFAULT 'gemini-1.5-flash',
+      api_key_masked TEXT NOT NULL DEFAULT 'AIzaSy*******************************',
+      api_key_encrypted TEXT NOT NULL DEFAULT '',
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      rate_limit_per_minute INTEGER NOT NULL DEFAULT 20,
+      total_requests INTEGER NOT NULL DEFAULT 0,
+      total_tokens INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
+
+    -- Phase 7 Indexes
+    CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_ai_messages_conv ON ai_messages(conversation_id, created_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_ai_knowledge_cat ON ai_knowledge_docs(category, is_enabled);
+    CREATE INDEX IF NOT EXISTS idx_ai_quiz_drafts_status ON ai_quiz_drafts(status, category);
+    CREATE INDEX IF NOT EXISTS idx_ai_security_analyses_user ON ai_security_analyses(user_id, created_at DESC);
   `);
 }
 
@@ -880,6 +979,17 @@ function seedInitialData(db: DatabaseSync) {
     insertPhase6Ach.run(`ach_${a.code}`, a.code, a.title, a.desc, a.icon, a.cat, a.xp);
   }
 
+  // Phase 7 Achievements
+  const phase7Achievements = [
+    { code: "ai-scholar", title: "AI Learning Scholar", desc: "Selesaikan sesi interaktif dengan AI Learning Assistant untuk memperdalam pemahaman siber.", icon: "Bot", cat: "ai", xp: 35 },
+    { code: "defensive-analyst", title: "Defensive Security Analyst", desc: "Lakukan analisis log sistem atau malware menggunakan AI Security Analysis Center.", icon: "ShieldAlert", cat: "defense", xp: 45 },
+    { code: "pcap-investigator", title: "Traffic Forensics Investigator", desc: "Ekstrak dan analisis lalu lintas jaringan PCAP dengan Network Traffic Analyzer.", icon: "Network", cat: "defense", xp: 40 },
+    { code: "quiz-champion", title: "Adaptive Quiz Champion", desc: "Selesaikan latihan kuis terpersonalisasi yang dihasilkan oleh AI Quiz Generator.", icon: "Sparkles", cat: "ai", xp: 30 },
+  ];
+  for (const a of phase7Achievements) {
+    insertPhase6Ach.run(`ach_${a.code}`, a.code, a.title, a.desc, a.icon, a.cat, a.xp);
+  }
+
   // 8. Seed 10 Academy Learning Paths
   const checkAcademyPaths = db.prepare("SELECT count(*) as count FROM academy_paths").get() as { count: number };
   if (checkAcademyPaths.count === 0) {
@@ -1253,6 +1363,177 @@ function seedInitialData(db: DatabaseSync) {
       250,
       112,
       "scheduled",
+      now
+    );
+  }
+
+  // 12. Seed Phase 7: AI Provider Config
+  const checkAiConfig = db.prepare("SELECT count(*) as count FROM ai_provider_config").get() as { count: number };
+  if (checkAiConfig.count === 0) {
+    const now = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO ai_provider_config (
+        id, provider, model_name, api_key_masked, api_key_encrypted, is_enabled, rate_limit_per_minute, total_requests, total_tokens, updated_at
+      ) VALUES ('default_config', 'gemini', 'gemini-1.5-flash', 'AIzaSy*******************************', '', 1, 30, 0, 0, ?)
+    `).run(now);
+  }
+
+  // 13. Seed Phase 7: AI Knowledge Base Documents
+  const checkAiDocs = db.prepare("SELECT count(*) as count FROM ai_knowledge_docs").get() as { count: number };
+  if (checkAiDocs.count === 0) {
+    const now = new Date().toISOString();
+    const insertDoc = db.prepare(`
+      INSERT INTO ai_knowledge_docs (id, title, category, topic, content, tags, source_url, is_indexed, is_enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
+    `);
+
+    const docs = [
+      {
+        id: "doc-linux-privesc",
+        title: "Linux File Permissions, SUID & Privilege Escalation",
+        category: "linux",
+        topic: "System Hardening",
+        content: "Sistem izin berkas Linux menggunakan representasi octal (r=4, w=2, x=1) untuk User, Group, dan Other. SUID (Set Owner User ID Upon Execution, bit 4000) memungkinkan biner berjalan dengan hak istimewa pemilik berkas (seringkali root). Jika biner seperti /usr/bin/find atau /usr/bin/python memiliki bit SUID aktif (chmod u+s), penyerang lokal dapat mengeksploitasi fitur eksekusi skrip internal untuk eskalasi hak istimewa ke root. Mitigasi defensif meliputi audit reguler dengan perintah: find / -perm -4000 -type f 2>/dev/null dan menghapus bit SUID yang tidak esensial.",
+        tags: JSON.stringify(["linux", "suid", "privesc", "permissions", "chmod"]),
+        source: "/learning/linux/file-permissions",
+      },
+      {
+        id: "doc-net-handshake",
+        title: "TCP/IP 3-Way Handshake, SYN Flood & Wireshark Packet Analysis",
+        category: "networking",
+        topic: "Network Protocols & Defense",
+        content: "Proses inisiasi koneksi TCP menggunakan mekanisme 3-Way Handshake: SYN -> SYN-ACK -> ACK. Serangan SYN Flood mengeksploitasi antrian backlog SYN dengan mengirim banyak paket SYN tanpa pernah menyelesaikan jabat tangan dengan ACK akhir, menyebabkan kehabisan tabel status koneksi (state exhaustion). Analisis lalu lintas jaringan menggunakan Wireshark atau tcpdump dapat mendeteksi anomali ini dengan filter 'tcp.flags.syn == 1 and tcp.flags.ack == 0'. Mitigasi meliputi penerapan SYN Cookies di kernel Linux (net.ipv4.tcp_syncookies = 1) dan pembatasan laju koneksi pada iptables/nftables.",
+        tags: JSON.stringify(["networking", "tcp", "handshake", "syn-flood", "wireshark"]),
+        source: "/learning/networking/tcp-ip-fundamentals",
+      },
+      {
+        id: "doc-web-sqli",
+        title: "OWASP Top 10: SQL Injection Mechanics & Parameterized Defense",
+        category: "web",
+        topic: "Web Application Security",
+        content: "SQL Injection (SQLi) terjadi ketika masukan data dari pengguna langsung disatukan (concatenation) ke dalam query basis data tanpa sanitasi atau parameterisasi. Varian utama meliputi In-Band SQLi (Error-based dan UNION-based), Inferential Blind SQLi (Boolean-based dan Time-based sleep), serta Out-of-Band SQLi. Satu-satunya mitigasi definitif adalah penggunaan Parameterized Queries (Prepared Statements) dan ORM aman, di mana mesin basis data memisahkan instruksi SQL dari data literal sehingga karakter kontrol seperti ' OR 1=1 -- tidak dapat mengubah struktur sintaks query.",
+        tags: JSON.stringify(["web", "sqli", "owasp", "prepared-statements", "database"]),
+        source: "/learning/web-security/sql-injection",
+      },
+      {
+        id: "doc-crypto-ciphers",
+        title: "Applied Cryptography: Symmetric AES vs Asymmetric RSA & Hashing",
+        category: "cryptography",
+        topic: "Data Protection & Ciphers",
+        content: "Kriptografi modern terbagi menjadi enkripsi simetris (AES-256 GCM) yang menggunakan satu kunci rahasia bersama untuk efisiensi transfer data cepat, dan enkripsi asimetris (RSA-4096, ECC / Ed25519) yang memanfaatkan pasangan kunci publik dan privat untuk pertukaran kunci aman dan tanda tangan digital. Fungsi Hash Kriptografis (SHA-256, SHA-3) bersifat searah (one-way) dan resisten terhadap benturan (collision-resistant), ideal untuk verifikasi integritas data dan penyimpanan kata sandi jika digabungkan dengan salt dan memory-hard KDF (PBKDF2, Argon2id, bcrypt).",
+        tags: JSON.stringify(["crypto", "aes", "rsa", "sha256", "argon2", "pbkdf2"]),
+        source: "/learning/cryptography/classical-ciphers",
+      },
+      {
+        id: "doc-forensics-magic-bytes",
+        title: "Digital Forensics: Magic Bytes Header Inspection & File Signature Spoofing",
+        category: "digital-forensics",
+        topic: "Artifact Analysis",
+        content: "Ekstensi berkas (seperti .pdf atau .jpg) hanya merupakan petunjuk visual bagi sistem operasi grafis dan dapat dipalsukan secara mudah oleh penyerang. Format berkas sebenarnya ditentukan oleh Magic Bytes (file signature) pada header awal berkas: PNG selalu diawali 89 50 4E 47 0D 0A 1A 0A, JPEG diawali FF D8 FF, berkas executable Windows (PE32) diawali 4D 5A (MZ), ELF Linux diawali 7F 45 4C 46, dan PDF diawali 25 50 44 46 (%PDF). Pemeriksaan forensik mengidentifikasi anomali di mana berkas dengan ekstensi laporan.pdf ternyata memiliki magic bytes 4D 5A, menandakan teknik penyamaran malware yang berbahaya.",
+        tags: JSON.stringify(["forensics", "magic-bytes", "signature", "pe", "elf", "file-spoofing"]),
+        source: "/learning/digital-forensics/file-analysis",
+      },
+      {
+        id: "doc-reverse-buffer-overflow",
+        title: "Reverse Engineering: x86_64 Stack Frames & Buffer Overflow Mechanics",
+        category: "reverse-engineering",
+        topic: "Binary Analysis",
+        content: "Dalam arsitektur x86_64, eksekusi fungsi mengalokasikan stack frame yang menampung variabel lokal, pointer frame dasar (RBP), dan alamat kembali (Return Address / RIP). Kerentanan Buffer Overflow klasik terjadi ketika fungsi rentan seperti gets(), strcpy(), atau sprintf() menulis data melebihi ukuran buffer yang dialokasikan tanpa batas panjang. Penyerang dapat menimpa RIP untuk mengalihkan alur eksekusi program ke shellcode atau ROP (Return-Oriented Programming) gadgets. Mekanisme pertahanan modern meliputi Stack Canaries, ASLR (Address Space Layout Randomization), dan DEP / NX (No-Execute) bit.",
+        tags: JSON.stringify(["reverse", "buffer-overflow", "x86_64", "stack", "rop", "aslr", "nx"]),
+        source: "/learning/reverse-engineering/intro-binaries",
+      },
+      {
+        id: "doc-web-xss",
+        title: "Web Security: Cross-Site Scripting (XSS) & Content Security Policy (CSP)",
+        category: "web",
+        topic: "Client-Side Attacks",
+        content: "Cross-Site Scripting (XSS) terjadi ketika aplikasi web menyuntikkan skrip berbahaya yang tidak disanitasi ke dalam browser korban. Tiga tipe utama: Reflected XSS (skrip dikirim via parameter URL), Stored XSS (skrip disimpan permanen di basis data seperti komentar forum), dan DOM-based XSS (skrip dieksekusi di sisi klien akibat manipulasi DOM tidak aman). Pertahanan berlapis meliputi Context-Aware HTML Encoding, sanitasi konten kaya menggunakan pustaka teruji seperti DOMPurify, dan penegakan header Content Security Policy (CSP) ketat seperti 'default-src self; script-src self; object-src none'.",
+        tags: JSON.stringify(["web", "xss", "csp", "dompurify", "sanitization", "javascript"]),
+        source: "/learning/web-security/xss-fundamentals",
+      },
+      {
+        id: "doc-defensive-log-analysis",
+        title: "Defensive Operations: Server Log Analysis & Brute-Force Remediation",
+        category: "general",
+        topic: "Threat Detection & Response",
+        content: "Log server merupakan sumber bukti utama investigasi insiden. Pola serangan brute-force terlihat jelas pada log autentikasi SSH (/var/log/auth.log) atau web dengan catatan ratusan upaya login gagal ('Failed password for...') dalam rentang waktu singkat dari alamat IP yang sama. Analisis pola log web (/var/log/nginx/access.log) dapat mengungkap pemindaian direktori otomatis (banyak respon HTTP 404 pada jalur sensitif seperti /admin, /.env, /wp-login.php). Tindakan pertahanan mencakup instalasi Fail2ban untuk memblokir IP penyerang secara otomatis di iptables, pemberlakuan autentikasi berbasis kunci (SSH key-only), dan implementasi Multi-Factor Authentication (MFA).",
+        tags: JSON.stringify(["defense", "logs", "brute-force", "fail2ban", "detection", "incident-response"]),
+        source: "/learning/linux/linux-administration",
+      },
+    ];
+
+    for (const d of docs) {
+      insertDoc.run(d.id, d.title, d.category, d.topic, d.content, d.tags, d.source, now, now);
+    }
+  }
+
+  // 14. Seed Phase 7: AI Quiz Drafts
+  const checkQuizzes = db.prepare("SELECT count(*) as count FROM ai_quiz_drafts").get() as { count: number };
+  if (checkQuizzes.count === 0) {
+    const now = new Date().toISOString();
+    const insertQuiz = db.prepare(`
+      INSERT INTO ai_quiz_drafts (id, topic, category, difficulty, question, type, options, correct_answer, explanation, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)
+    `);
+
+    insertQuiz.run(
+      "quiz-01-linux-perm",
+      "Linux Permissions",
+      "linux",
+      "beginner",
+      "Berapakah representasi nilai oktal untuk hak akses read (r), write (w), dan execute (x)?",
+      "multiple_choice",
+      JSON.stringify(["r=4, w=2, x=1", "r=1, w=2, x=4", "r=3, w=2, x=1", "r=2, w=4, x=8"]),
+      "r=4, w=2, x=1",
+      "Dalam sistem perizinan berkas Linux, nilai bobot oktal bernilai 4 untuk membaca (read), 2 untuk menulis (write), dan 1 untuk mengeksekusi (execute).",
+      now,
+      now
+    );
+
+    insertQuiz.run(
+      "quiz-02-web-sqli",
+      "SQL Injection",
+      "web",
+      "intermediate",
+      "Metode mitigasi manakah yang paling efektif dan definitif untuk mencegah serangan SQL Injection?",
+      "multiple_choice",
+      JSON.stringify([
+        "Menggunakan regex blacklist untuk memfilter tanda petik tunggal",
+        "Menggunakan Parameterized Queries (Prepared Statements)",
+        "Mengenkripsi seluruh tabel database di sisi penyimpanan",
+        "Mengubah port default server database"
+      ]),
+      "Menggunakan Parameterized Queries (Prepared Statements)",
+      "Prepared Statements memisahkan struktur query dari parameter data pengguna, sehingga karakter khusus dari input pengguna tidak dapat dieksekusi sebagai perintah SQL.",
+      now,
+      now
+    );
+
+    insertQuiz.run(
+      "quiz-03-net-syn",
+      "TCP SYN Flood",
+      "networking",
+      "intermediate",
+      "Paket flag TCP apakah yang sengaja tidak dikirimkan oleh penyerang dalam skenario serangan SYN Flood?",
+      "multiple_choice",
+      JSON.stringify(["ACK", "FIN", "RST", "URG"]),
+      "ACK",
+      "Penyerang mengirim paket SYN untuk meminta koneksi namun sengaja tidak mengirim paket ACK balasan terakhir, menyebabkan server menahan koneksi setengah terbuka (half-open) hingga kehabisan memori tabel koneksi.",
+      now,
+      now
+    );
+
+    insertQuiz.run(
+      "quiz-04-rev-canary",
+      "Binary Exploit Mitigations",
+      "reverse-engineering",
+      "advanced",
+      "Mekanisme mitigasi biner manakah yang meletakkan nilai integritas acak di depan Return Address pada stack frame untuk mendeteksi buffer overflow?",
+      "multiple_choice",
+      JSON.stringify(["Stack Canary", "ASLR", "NX Bit", "PIE"]),
+      "Stack Canary",
+      "Stack Canary adalah nilai rahasia (sering diawali byte null) yang diletakkan tepat sebelum pointer instruksi (RIP/EIP). Sebelum fungsi kembali, nilai canary diperiksa; jika nilai telah berubah akibat luapan buffer, program langsung dihentikan (stack smashing detected).",
+      now,
       now
     );
   }

@@ -30,6 +30,8 @@ import {
   Compass,
   Calendar,
   Sparkles,
+  Bot,
+  ShieldAlert,
 } from "lucide-react";
 import { GithubIcon, Badge } from "@/components/ui";
 
@@ -43,6 +45,8 @@ export function Navbar() {
     { href: "/", label: t.nav.home, icon: Terminal },
     { href: "/academy", label: "Akademi", icon: GraduationCap },
     { href: "/learning", label: t.nav.learning, icon: BookOpen },
+    { href: "/assistant", label: "AI Tutor", icon: Bot },
+    { href: "/security-center", label: "Security Center", icon: ShieldAlert },
     { href: "/range", label: (t.nav as any).range || "Cyber Range", icon: Activity },
     { href: "/labs", label: t.nav.labs, icon: FlaskConical },
     { href: "/tools", label: t.nav.tools, icon: Wrench },
@@ -53,6 +57,8 @@ export function Navbar() {
   ];
 
   const ecosystemItems = [
+    { href: "/learning/ai-path", label: "AI Learning Path", icon: Sparkles },
+    { href: "/quizzes", label: "Kuis AI", icon: Award },
     { href: "/contributors", label: "Kontributor", icon: GitPullRequest },
     { href: "/mentorship", label: "Mentorship", icon: Compass },
     { href: "/events", label: "Events", icon: Calendar },

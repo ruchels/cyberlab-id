@@ -5,6 +5,36 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.7.0] — Phase 7: Intelligence & Advanced Automation (2026-11-19)
+
+### Added
+- **AI Learning Assistant (`/assistant`)**:
+  - Interactive, bilingual (ID/EN) cybersecurity tutor with full conversation history and per-session deletion controls.
+  - Grounded RAG knowledge retrieval drawing from 8 internal high-authority knowledge documents and 10 academy paths.
+  - Progressive hint levels (Level 1: Konseptual, Level 2: Teknis, Level 3: Detail Langkah) preventing answer-spoiling.
+  - Strict anti-leak defense: `sanitizeAntiLeak()` scrubbing raw flag patterns (`CYBERLAB{...}`) with defensive redaction placeholders.
+  - User feedback mechanisms (thumbs up / thumbs down with notes) persisted to the database.
+- **Personalized Learning Engine (`/learning/ai-path`)**:
+  - Algorithmic domain mastery radar evaluating student performance across all 6 cybersecurity domains (Linux, Networking, Web, Cryptography, Forensics, Reverse Engineering).
+  - Weakest domain detection with tailored next activity recommendations and skill-matched CTF challenge suggestions.
+  - User privacy controls: student consent toggle to enable or disable personalized learning analytics.
+  - Progressive milestone tracker rewarding lab completions, first CTF solves, and path certifications.
+- **Defensive Security Analysis Center (`/security-center`)**:
+  - **Log Analyzer**: Ingests authentication logs and Web server logs to detect SSH brute-force attempts, SQL injections, Path Traversal, and scanning tools; outputs Fail2ban jail configurations and remediation checklists.
+  - **Network Traffic Analyzer**: Ingests packet metadata/summaries to detect port scans, unencrypted plaintext credentials (HTTP Basic Auth), and TCP SYN floods; generates defensive Snort/Suricata rules.
+  - **File Analysis Assistant (Zero-Execution Safe)**: Inspects binary headers client-side and server-side to calculate SHA-256, SHA-1, and MD5 hashes, identify Magic Bytes (PNG, JPEG, PE32, ELF, PDF, ZIP), flag extension spoofing attacks, and compute Shannon entropy.
+- **Adaptive AI Quiz Engine (`/quizzes`)**:
+  - Interactive domain-specific quizzes with instant explanation feedback and +15 XP rewards.
+  - Admin quiz curation and review queue to approve or reject community/AI generated draft questions before publication.
+- **AI Administration & Governance (`/admin` -> AI Tab)**:
+  - Multi-provider model configuration supporting Google Gemini, OpenAI, Anthropic Claude, and Local Offline RAG.
+  - Masked API key management, request counters, and total token usage tracking.
+  - RAG knowledge document CRUD management with live index toggle.
+- **Automated Verification**:
+  - 45 automated unit and integration tests in `test_phase7.mjs` verifying RAG grounding, safety guards, personalization, defensive analyzers, quizzes, and admin workflows (total 160 platform tests, 100% pass rate).
+
+---
+
 ## [2.6.0] — Phase 6: Open Source Ecosystem, Cybersecurity Academy & Global Community (2026-11-19)
 
 ### Added

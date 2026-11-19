@@ -158,6 +158,34 @@
 
 </td>
 </tr>
+<tr>
+<td colspan="2">
+
+### 🌐 Open Source Ecosystem, Academy & Arena (v2.6.0) — *Phase 6*
+- **Cybersecurity Academy (`/academy`)**: 10 structured career tracks with syllabus checkpoints and instant certificate generation.
+- **Cryptographic Certificate Verification (`/verify/[certId]`)**: Public SHA-256 verification hash, tamper detection, and revocation system.
+- **CTF Competition Arena (`/arena`)**: Scheduled individual and squad tournaments with tie-breaking rules.
+- **Contributor Hub (`/contributors`) & Research (`/research`)**: Community content submission, write-up reader, and anti-leak flag validation.
+- Complete documentation: [`ECOSYSTEM_ARCHITECTURE.md`](ECOSYSTEM_ARCHITECTURE.md).
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+### 🤖 Intelligence, Defensive Analysis & Automation (v2.7.0) — *Phase 7*
+- **AI Learning Assistant (`/assistant`)**: Grounded RAG tutor with progressive hints (conceptual -> technical -> step-by-step), prompt injection defense, and automated CTF flag redaction (`sanitizeAntiLeak`).
+- **Personalized Learning Engine (`/learning/ai-path`)**: Algorithmic domain mastery radar across 6 core domains (Linux, Networking, Web, Crypto, Forensics, Reverse Eng), weakest domain detection, and user privacy consent controls.
+- **Defensive Security Analysis Center (`/security-center`)**:
+  - *Log Analyzer*: Ingests auth & web logs; detects SSH brute force, SQLi, and path traversal with Fail2ban remediation rules.
+  - *Network Traffic Analyzer*: Analyzes packet metadata; detects port scans, unencrypted basic auth credentials, and generates defensive Snort/Suricata rules.
+  - *File Analysis Assistant*: Safe zero-execution static inspection; SHA-256/SHA-1/MD5 hashes, Magic Bytes detection, extension spoofing alert, and Shannon entropy.
+- **Adaptive AI Quizzes (`/quizzes`)**: Interactive practice questions with instant evaluation, educational explanations, and +15 XP rewards.
+- **AI Administration & Governance (`/admin`)**: Multi-provider configuration (Gemini, OpenAI, Claude, Local RAG), masked API keys, and knowledge base document management.
+- Complete documentation: [`AI_SYSTEM_ARCHITECTURE.md`](AI_SYSTEM_ARCHITECTURE.md).
+
+</td>
+</tr>
 </table>
 
 ---
