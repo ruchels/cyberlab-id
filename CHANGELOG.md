@@ -5,6 +5,59 @@ The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ---
 
+## [2.11.0] — Collapsible Sidebar Navigation & Public GitHub Release Preparation (2026-11-19)
+
+### Added
+- **Collapsible Sidebar Navigation (`components/layout/sidebar.tsx`, `components/layout/app-shell.tsx`)**:
+  - Linear/Vercel-inspired responsive left navigation with expanded (260px) and collapsed icon-only (72px) modes.
+  - Hover tooltips for compact mode, accessible keyboard controls (`aria-expanded`, focus rings).
+  - Off-canvas mobile drawer with smooth slide-in/out, dark backdrop blur overlay, and auto-close on navigation.
+  - Role-based navigation visibility (Admin console protected and restricted to administrators).
+  - User profile dock with avatar, username, role badge, XP counter, profile settings link, and direct logout action.
+  - Persistent state preference stored in `localStorage` (`cyberlab_sidebar_collapsed`).
+- **Open-Source Repository Audit & GitHub Release Preparation**:
+  - Comprehensive secret audit: zero hardcoded API keys, private tokens, or credentials in tracked files.
+  - Environment templates (`.env.example` in root and `website/.env.example`) with safe defaults.
+  - Database sanitization: 100% fictional demonstration data with zero real PII.
+  - GitHub Actions CI/CD workflows updated for public multi-branch collaboration (`[main, master]`).
+  - Professional bilingual documentation (`README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE`, `CODE_OF_CONDUCT.md`).
+
+---
+
+## [2.10.0] — Phase 10: Cyber Defense, Security Operations & Incident Response (2026-11-19)
+
+### Added
+- **Security Operations Center (SOC) Workspace (`/soc`)**:
+  - High-tech Blue Team command dashboard with real-time severity metrics (Critical, High, Medium, Low), active alerts, open incidents, and Mean Time to Respond (MTTR) tracking.
+  - Clear visual badges and database flags (`is_simulation = 1`) distinguishing educational simulations from operational telemetry.
+- **Security Event Management & Normalization**:
+  - Telemetry ingestion engine (`soc_events`) normalizing Linux Auth/sshd syslogs, Web HTTP access logs (with URL-decoded SQLi/traversal detection), DNS query logs, and JSON payloads.
+  - Source IP extraction, severity attribution, and correlation tracking.
+- **Configurable Detection Engine & Alert Generation**:
+  - Detection rules table (`soc_detection_rules`) mapped directly to MITRE ATT&CK techniques (T1110, T1190, T1071.004, T1548.001, T1046).
+  - Automated rule evaluator generating structured security alerts (`soc_alerts`).
+- **Alert Triage & Investigation Workflow**:
+  - 6-stage alert lifecycle (`new` -> `acknowledged` -> `investigating` -> `escalated` -> `resolved` -> `closed` -> `false_positive`).
+  - Analyst investigation notes (`soc_alert_notes`) and evidence logging.
+- **Incident Response Management**:
+  - Formal incident declaration (`soc_incidents`) with unique identifiers (`INC-YYYY-XXX`).
+  - Multi-stage IR containment, eradication, and recovery plans with human-in-the-loop requirement.
+- **Threat Intelligence Center**:
+  - Indicator of Compromise (IoC) table (`soc_threat_indicators`) tracking malicious IPs, domains, hashes, and CVEs with confidence scores.
+  - Real-time IoC lookup engine matching incoming telemetry against threat feeds.
+- **Digital Forensics Case Management & SHA-256 Hashing**:
+  - Forensic case tracking (`soc_forensic_cases`) with evidence inventory.
+  - Tamper-proof cryptographic SHA-256 checksum verification and chain of custody preservation.
+- **Defensive Assets & Vulnerabilities**:
+  - Defensive asset inventory (`soc_assets`) and tracked CVE vulnerabilities (`soc_vulnerabilities`) with remediation status.
+- **Security Playbooks**:
+  - Standard Operating Procedures (`soc_playbooks`) with interactive checklists for SSH Brute Force, Web SQLi, Phishing, and DNS Tunneling.
+- **Procedural Web Audio Engine**:
+  - 100% zero-dependency synthesized audio engine (`sound-engine.ts`) via browser Web Audio API.
+  - UI micro-sounds (click, tab, hover, alert, CTF solve chime) and ambient cyber drone (disabled by default).
+
+---
+
 ## [2.9.0] — Phase 9: Enterprise & Institutional Edition (2026-11-19)
 
 ### Added

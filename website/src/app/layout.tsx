@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
+import { AppShell } from "@/components/layout/app-shell";
 import { LanguageProvider } from "@/lib/i18n";
 import { AuthProvider } from "@/lib/auth-context";
 import { SoundProvider } from "@/lib/sound-context";
@@ -59,11 +58,7 @@ export default function RootLayout({
           <AnimatedBackground />
           <LanguageProvider>
             <AuthProvider>
-              <Navbar />
-              <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10">
-                {children}
-              </main>
-              <Footer />
+              <AppShell>{children}</AppShell>
             </AuthProvider>
           </LanguageProvider>
         </SoundProvider>

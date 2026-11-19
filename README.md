@@ -14,10 +14,11 @@
 **Platform pembelajaran keamanan siber open-source untuk Indonesia.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](#-contributing--kontribusi)
-[![Made in Indonesia](https://img.shields.io/badge/Made%20in-Indonesia-red.svg)](https://github.com)
-[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-ff69b4.svg)](https://github.com)
-[![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-orange.svg)](https://github.com)
+[![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/ruchels/cyberlab-id)
+[![Tests](https://img.shields.io/badge/tests-330%2B%20passed-brightgreen.svg)](https://github.com/ruchels/cyberlab-id)
+[![Made in Indonesia](https://img.shields.io/badge/Made%20in-Indonesia-red.svg)](https://github.com/ruchels/cyberlab-id)
+[![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-orange.svg)](https://github.com/ruchels/cyberlab-id)
 
 [Bahasa Indonesia](#-tentang-cyberlab-id) · [English](#-about-cyberlab-id) · [Mulai Cepat](#-quick-start--mulai-cepat) · [Modul](#-learning-modules--modul-pembelajaran) · [Tools](#%EF%B8%8F-interactive-tools--alat-interaktif) · [Kontribusi](#-contributing--kontribusi)
 
@@ -215,6 +216,23 @@
 
 </td>
 </tr>
+<tr>
+<td colspan="2">
+
+### 🛡️ Cyber Defense, SOC & Incident Response (v2.10.0) — *Phase 10 & Visual Upgrade*
+- **Blue Team Security Operations Center (`/soc`)**: High-tech command dashboard with real-time severity metrics (Critical, High, Medium, Low), Mean Time to Respond (MTTR) tracking, and simulation separation badges.
+- **Security Event Management**: Ingestion & normalization engine for Auth/SSH, HTTP access logs, DNS query logs, and JSON payloads with threat intelligence matching.
+- **Configurable Detection Engine**: Configurable detection rules mapped directly to MITRE ATT&CK tactics & techniques.
+- **Alert Triage & Investigation**: 6-stage lifecycle (`new` -> `acknowledged` -> `investigating` -> `escalated` -> `resolved` -> `closed` -> `false_positive`) with analyst notes and evidence attachment.
+- **Incident Response Management**: Formal IR declaration, multi-stage lifecycle, human-in-the-loop containment plans, and post-incident lessons learned reviews.
+- **Threat Intelligence Center**: Observable indicators (IPs, domains, hashes, CVEs), source attribution (CISA, AlienVault OTX, honeypots), and real-time IoC lookup.
+- **Digital Forensics Case Management**: Forensic case tracking with SHA-256 cryptographic chain of custody preservation.
+- **Collapsible Sidebar Navigation**: Linear/Vercel-inspired responsive left navigation with expanded/collapsed modes, mobile off-canvas drawer, role-based visibility, and tactile sound feedback.
+- **Procedural Web Audio Engine**: 100% zero-dependency synthesized UI sounds and ambient drone via Web Audio API (disabled by default with global settings).
+- Complete documentation: [`VISUAL_AND_MOTION_DESIGN_SYSTEM.md`](VISUAL_AND_MOTION_DESIGN_SYSTEM.md).
+
+</td>
+</tr>
 </table>
 
 ---
@@ -230,12 +248,14 @@
 
 ```bash
 # Clone the repository / Kloning repositori
-git clone https://github.com/CyberLab-ID/cyberlab-id.git
+git clone https://github.com/ruchels/cyberlab-id.git
+cd cyberlab-id
 
-# Navigate to the website directory / Masuk ke direktori website
+# Setup environment variables / Konfigurasi environment
+cp .env.example .env.local
+
+# Navigate to the website directory & install / Masuk ke direktori website & instal
 cd website
-
-# Install dependencies / Instal dependensi
 npm install
 
 # Start the development server / Jalankan server pengembangan
